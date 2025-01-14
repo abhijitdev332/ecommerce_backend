@@ -11,6 +11,6 @@ const router = express.Router();
 router.post("/create", asyncWrapper(createVariant));
 router.get("/:id", asyncWrapper(getVariant));
 router.put("/update/:id", asyncWrapper(updateVariant));
-router.put("/remove/:id", asyncWrapper(deleteVariant));
+router.delete("/remove/:id", asyncWrapper(deleteVariant));
 
 export default router;

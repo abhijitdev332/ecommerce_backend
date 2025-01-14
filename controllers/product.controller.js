@@ -1,7 +1,6 @@
 import { productModel, variantModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { successResponse } from "../utils/apiResponse.js";
-import productModal from "../models/product.model.js";
 async function createProduct(req, res, next) {
   const { username, email, phoneNumber, password } = req.body;
   // const haveUser = await productModel.find({
@@ -11,7 +10,7 @@ async function createProduct(req, res, next) {
   //   let userErr = new AppError("User already in use!!", 400);
   //   return next(userErr);
   // }
-  const newProduct = new productModal({ ...req.body });
+  const newProduct = new productModel({ ...req.body });
   let savedProduct = await newProduct.save();
   if (!savedProduct) {
     let userErr = new DatabaseError("Failed to create user!!");
@@ -70,5 +69,37 @@ async function deleteProduct(req, res, next) {
   }
   return successResponse(res, 200, "product Deleted");
 }
+async function addReview(req, res, next) {
+  const { id } = req.params;
+  const { userId, name, rating, comment } = req.body;
 
-export { createProduct, getProduct, updateProduct, deleteProduct };
+  const product = await productModel.findById(id);
+  if (!product) {
+    return next(new AppError("Can't find the product", 404));
+  }
+
+  product.reviews.push({
+    user: userId,
+    name,
+    rating,
+    comment,
+  });
+  await product.save()
+}
+async function deleteReview(req,res,next){
+  const { id } = req.params;
+
+  const { reviewId } = req.query;
+
+  const product = await productModel.findById(id);
+  if (!product) {
+    return next(new AppError("Can't find the product", 404));
+  }
+let inx=product?.reviews?.findIndex(ele=>ele?._id==reviewId)
+  product.reviews.splice(inx,1)
+  await product.save()
+
+  await product.save()
+}
+
+export { createProduct, getProduct, updateProduct, deleteProduct,addReview,deleteReview };

@@ -11,13 +11,14 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log("server is running", PORT);
 });
-
+// unhandle rejection
 process.on("unhandledRejection", (err) => {
   logMessage(errorLogger, err?.message);
   server.close(() => {
     process.exit(1);
   });
 });
+// uncaught exceptions
 process.on("uncaughtException", (err) => {
   logMessage(errorLogger, err?.message);
   process.exit(1);
