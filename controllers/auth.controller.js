@@ -1,5 +1,4 @@
-import { UserModal } from "../models/user.model.js";
-import { tokenModal } from "../models/token.modal.js";
+import { userModel, tokenModel } from "../models/models.js";
 import { ServerError, AppError } from "../lib/customError.js";
 import { decrypt } from "../lib/encryptPass.js";
 import { logMessage, errorLogger } from "../utils/logger.js";
@@ -14,10 +13,10 @@ import {
   verifyRefreshToken,
 } from "../lib/createToken.js";
 import { dateFormat } from "../utils/utills.js";
-export const login = async (req, res, next) => {
+const login = async (req, res, next) => {
   const { email, password } = req.body;
   // check the mail its match with any
-  let user = await UserModal.findOne({ email: email });
+  let user = await userModel.findOne({ email: email });
   if (!user) {
     logMessage(errorLogger, "No user found on this Email", { email });
     return infoResponse(res, 404, "Not found any user on this Email");
@@ -37,7 +36,7 @@ export const login = async (req, res, next) => {
     const accessToken = generateAccessToken(resUser?._id);
     const refreshToken = generateRefreshToken(resUser?._id);
     // save refreshtoken in database
-    let savedToken = new tokenModal({
+    let savedToken = new tokenModel({
       token: refreshToken,
       userId: resUser?._id,
       expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -64,13 +63,13 @@ export const login = async (req, res, next) => {
     next(passErr);
   }
 };
-export const refreshToken = async (req, res, next) => {
+const refreshToken = async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken; // Get refresh token from cookies
 
   if (!refreshToken)
     return errorResponse(res, 403, "refresh Token is required");
 
-  const storedToken = await tokenModal.findOne({ token: refreshToken });
+  const storedToken = await tokenModel.findOne({ token: refreshToken });
   if (
     !storedToken ||
     dateFormat(storedToken.expireAt) < dateFormat(new Date())
@@ -100,7 +99,7 @@ export const refreshToken = async (req, res, next) => {
     next(appErr);
   }
 };
-export const logout = async (req, res, next) => {
+const logout = async (req, res, next) => {
   try {
     res.clearCookie("accessToken", {
       path: "/", // Path of the cookie
@@ -114,3 +113,5 @@ export const logout = async (req, res, next) => {
     next(logoutErr);
   }
 };
+
+export { login, refreshToken, logout };

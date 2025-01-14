@@ -54,4 +54,5 @@ userSchema.statics.findByRole = function (role) {
   return this.find({ roles: role });
 };
 
-export const UserModal = mongoose.model("user", userSchema);
+const UserModal = mongoose.model("user", userSchema);
+export default UserModal;

@@ -1,10 +1,10 @@
-import { UserModal } from "../models/user.model.js";
+import { userModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { encrypt } from "../lib/encryptPass.js";
 import { successResponse } from "../utils/apiResponse.js";
-export async function createUser(req, res, next) {
+async function createUser(req, res, next) {
   const { username, email, phoneNumber, password } = req.body;
-  const haveUser = await UserModal.find({
+  const haveUser = await userModel.find({
     $or: [{ email: email }, { phoneNumber: phoneNumber }],
   });
   if (haveUser.length > 0) {
@@ -12,7 +12,7 @@ export async function createUser(req, res, next) {
     return next(userErr);
   }
   let encryptPass = await encrypt(password);
-  const user = new UserModal({
+  const user = new userModel({
     username,
     email,
     password: encryptPass,
@@ -33,10 +33,10 @@ export async function createUser(req, res, next) {
   //   data: resUser,
   // });
 }
-export async function getUser(req, res, next) {
+async function getUser(req, res, next) {
   const { id } = req.params;
 
-  const matchedUser = await UserModal.findOne({ _id: id }, { password: 0 });
+  const matchedUser = await userModel.findOne({ _id: id }, { password: 0 });
   if (!matchedUser) {
     let userErr = new AppError("can't find any user", 400);
     return next(userErr);
@@ -47,11 +47,11 @@ export async function getUser(req, res, next) {
     data: matchedUser,
   });
 }
-export async function updateUser(req, res, next) {
+async function updateUser(req, res, next) {
   const { id } = req.params;
   const { username, email, password } = req.body;
 
-  const updatedUser = await UserModal.findByIdAndUpdate(
+  const updatedUser = await userModel.findByIdAndUpdate(
     id,
     { username, email, password },
     {
@@ -68,9 +68,9 @@ export async function updateUser(req, res, next) {
     data: updatedUser,
   });
 }
-export async function deleteUser(req, res, next) {
+async function deleteUser(req, res, next) {
   const { id } = req.params;
-  const deletedUser = await UserModal.findByIdAndDelete(id);
+  const deletedUser = await userModel.findByIdAndDelete(id);
   if (!deletedUser) {
     let serverErr = new DatabaseError("failed to delete user!!");
     return next(serverErr);
@@ -79,3 +79,5 @@ export async function deleteUser(req, res, next) {
     msg: "User deleted successfully",
   });
 }
+
+export { createUser, getUser, updateUser, deleteUser };

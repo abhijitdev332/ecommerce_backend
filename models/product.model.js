@@ -3,15 +3,46 @@ import mongoose, { Schema } from "mongoose";
 const ReviewSchema = new Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   name: { type: String, required: true },
-  rating: { type: Number, required: true, min: 1, max: 5 },
+  rating: { type: Number, max: 5, default: 0 },
   comment: { type: String, required: true },
+});
+const productDetailsSchema = new Schema({
+  packOf: {
+    type: Number,
+    default: 1,
+  },
+  styleCode: {
+    type: String,
+  },
+  fabric: {
+    type: String,
+  },
+  fabricCare: String,
+  pattern: { type: String },
+  pockets: Number,
+  sleeve: String,
+  SuitableFor: String,
+  fit: String,
+  style: {
+    type: [String],
+    enum: {
+      values: ["casual", "formal", "party", "gym"],
+      message: "{VALUE} is not a valid style",
+    },
+  },
+});
+const variantSchema = new Schema({
+  variantName: String,
+  variantValues: Array,
+  variantPrice: Number,
+  variantStock: Number,
+  variantImages: [],
 });
 // Product Schema
 const ProductSchema = new Schema(
   {
-    skuID: {
+    genderFor: {
       type: String,
-      required: true,
     },
     name: {
       type: String,
@@ -24,39 +55,13 @@ const ProductSchema = new Schema(
       required: [true, "Product description is required"],
       maxlength: [5000, "Product description cannot exceed 5000 characters"],
     },
-    price: {
-      type: Number,
-      required: [true, "Product price is required"],
-      min: [0, "Price must be at least 0"],
-    },
     category: {
-      type: String,
+      type: [Schema.Types.ObjectId],
+      ref: "category",
       required: [true, "Product category is required"],
-      enum: [
-        "Electronics",
-        "Books",
-        "Clothing",
-        "Beauty",
-        "Home",
-        "Sports",
-        "Automotive",
-        "Toys",
-        "Other",
-      ],
     },
+    productDetails: productDetailsSchema,
     brand: { type: String, trim: true },
-    images: [
-      {
-        public_id: { type: String, required: true },
-        url: { type: String, required: true },
-      },
-    ],
-    stock: {
-      type: Number,
-      required: [true, "Product stock is required"],
-      min: [0, "Stock cannot be negative"],
-      default: 0,
-    },
     reviews: [ReviewSchema],
     numReviews: {
       type: Number,
@@ -69,9 +74,21 @@ const ProductSchema = new Schema(
       max: [5, "Rating cannot exceed 5"],
     },
     isFeatured: { type: Boolean, default: false },
+    returnPolicy: {
+      type: Number,
+      default: 10,
+    },
+    deliveryFees: {
+      type: Number,
+      default: 0,
+    },
+    bankOffers: {
+      type: Array,
+    },
+    variations: [variantSchema],
   },
   { timestamps: true }
 );
 
 const productModal = mongoose.model("product", ProductSchema);
-export { productModal };
+export default productModal;
