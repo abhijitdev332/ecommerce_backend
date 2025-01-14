@@ -1,63 +1,63 @@
-import { variantModel } from "../models/models.js";
+import { orderModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { infoResponse, successResponse } from "../utils/apiResponse.js";
-async function createVariant(req, res, next) {
-  const { productId, color, size } = req.body;
-  const hadVariant = await variantModel.find({ productId, color, size });
-  if (hadVariant) {
-    return infoResponse(res, 400, "variant already existed");
-  }
-  const newVariant = new variantModel({ ...req.body });
-  let savedVariant = await newVariant.save();
-  if (!savedVariant) {
+async function createOrder(req, res, next) {
+  const {
+    userId,
+    products,
+    totalAmount,
+    discount,
+    transactionId,
+    paymentGateway,
+  } = req.body;
+
+  const newOrder = new orderModel({ ...req.body });
+  let savedOrder = await newOrder.save();
+  if (!savedOrder) {
     let userErr = new DatabaseError("Failed to create user!!");
     return next(userErr);
   }
 
-  return successResponse(
-    res,
-    201,
-    "Variant Created Successfully",
-    savedVariant
-  );
+  return successResponse(res, 201, "Variant Created Successfully", savedOrder);
 }
-async function getVariant(req, res, next) {
+async function getOrder(req, res, next) {
   const { id } = req.params;
 
-  const matchedVa = await variantModel.findOne({ productId: id });
-  if (!matchedVa) {
+  const matchedOrder = await orderModel.findById(id);
+  if (!matchedOrder) {
     let userErr = new AppError("can't find any user", 400);
     return next(userErr);
   }
 
-  return successResponse(res, 200, "sucessfull", matchedVa);
+  return successResponse(res, 200, "sucessfull", matchedOrder);
 }
-async function updateVariant(req, res, next) {
+async function updateOrder(req, res, next) {
   const { id } = req.params;
-  const { username, email, password } = req.body;
+  const { products, totalAmount, discount, transactionId, paymentGateway } =
+    req.body;
 
-  const updatedVa = await variantModel.findByIdAndUpdate(
+  const updatedOrder = await variantModel.findByIdAndUpdate(
     id,
     { ...req.body },
     {
       runValidators: true,
     }
   );
-  if (!updatedVa) {
+  if (!updatedOrder) {
     let serverErr = new DatabaseError("Failed to update user!!");
     return next(serverErr);
   }
 
   return successResponse(res, 200, "Product Variant updated successfully");
 }
-async function deleteVariant(req, res, next) {
+async function deleteOrder(req, res, next) {
   const { id } = req.params;
-  const deletedVa = await variantModel.findByIdAndDelete(id);
-  if (!deletedVa) {
+  const deletedOrder = await variantModel.findByIdAndDelete(id);
+  if (!deletedOrder) {
     let serverErr = new DatabaseError("failed to delete user!!");
     return next(serverErr);
   }
   return successResponse(res, 200, "product variant Deleted");
 }
 
-export { createVariant, getVariant, updateVariant, deleteVariant };
+export { createOrder, getOrder, updateOrder, deleteOrder };

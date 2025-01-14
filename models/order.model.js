@@ -20,7 +20,7 @@ const orderSchema = new mongoose.Schema(
         },
       },
     ],
-    TotalAmount: { type: Number, required: true },
+    totalAmount: { type: Number, required: true },
     discount: { type: Number },
     transactionId: {
       type: String,

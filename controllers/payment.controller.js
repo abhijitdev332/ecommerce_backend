@@ -63,7 +63,7 @@ const checkout = async (req, res) => {
     percent_off: discountCode?.percent,
     duration: "forever",
   });
-
+  // checkout session
   const session = await stripeInt.checkout.sessions.create({
     line_items: line_items,
     mode: "payment",
