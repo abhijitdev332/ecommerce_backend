@@ -1,7 +1,16 @@
 import mongoose, { Schema } from "mongoose";
 const VariantSchema = new mongoose.Schema(
   {
-    productId: { type: Schema.Types.ObjectId, ref: "product", required: true },
+    productId: {
+      type: Schema.Types.ObjectId,
+      ref: "product",
+      required: true,
+    },
+    sku: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     color: { type: String },
     size: { type: String },
     basePrice: { type: Number },

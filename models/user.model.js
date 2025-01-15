@@ -53,6 +53,8 @@ userSchema.methods.hasRole = function (role) {
 userSchema.statics.findByRole = function (role) {
   return this.find({ roles: role });
 };
+// virtual fileds
+userSchema.virtual("tokenId").get(function () {});
 
 const UserModal = mongoose.model("user", userSchema);
 export default UserModal;

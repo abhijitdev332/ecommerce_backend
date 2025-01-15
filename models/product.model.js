@@ -31,18 +31,22 @@ const productDetailsSchema = new Schema({
     },
   },
 });
-const variantSchema = new Schema({
-  variantName: String,
-  variantValues: Array,
-  variantPrice: Number,
-  variantStock: Number,
-  variantImages: [],
-});
+
 // Product Schema
 const ProductSchema = new Schema(
   {
     genderFor: {
       type: String,
+      enum: {
+        values: ["male", "female", "kids"],
+        message: `{VALUE} is not defined gender`,
+      },
+    },
+    sku: {
+      type: String,
+      required: true,
+      unique: true,
+      maxLength: [6, "maximum 6 charters allowed"],
     },
     name: {
       type: String,
@@ -58,6 +62,11 @@ const ProductSchema = new Schema(
     category: {
       type: [Schema.Types.ObjectId],
       ref: "category",
+      required: [true, "Product category is required"],
+    },
+    subCategory: {
+      type: Schema.Types.ObjectId,
+      ref: "subCategory",
       required: [true, "Product category is required"],
     },
     productDetails: productDetailsSchema,
@@ -85,7 +94,6 @@ const ProductSchema = new Schema(
     bankOffers: {
       type: Array,
     },
-    variations: [variantSchema],
   },
   { timestamps: true }
 );

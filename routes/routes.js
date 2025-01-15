@@ -6,6 +6,7 @@ import productRoutes from "./product.route.js";
 import productCataRoutes from "./productCata.route.js";
 import userRoutes from "./user.route.js";
 import variantRoutes from "./variant.route.js";
+import subCategoryRoutes from "./subCategory.route.js";
 
 export {
   authRoutes,
@@ -16,4 +17,5 @@ export {
   productRoutes,
   userRoutes,
   variantRoutes,
+  subCategoryRoutes,
 };

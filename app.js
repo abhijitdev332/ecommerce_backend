@@ -15,6 +15,7 @@ import {
   productCataRoutes,
   productRoutes,
   variantRoutes,
+  subCategoryRoutes,
 } from "./routes/routes.js";
 
 import { allowOrigins } from "./config/config.js";
@@ -52,6 +53,7 @@ app.use("/api/order", orderRoutes);
 app.use("/api/product/variant", variantRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/category", productCataRoutes);
+app.use("/api/scategory", subCategoryRoutes);
 app.use("/api/payment", paymentRoutes);
 // unversal error route
 app.use("*", async (req, res, next) => {
