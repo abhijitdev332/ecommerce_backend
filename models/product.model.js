@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { string } from "zod";
 
 const ReviewSchema = new Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -58,6 +59,9 @@ const ProductSchema = new Schema(
       type: String,
       required: [true, "Product description is required"],
       maxlength: [5000, "Product description cannot exceed 5000 characters"],
+    },
+    imgurl: {
+      type: String,
     },
     category: {
       type: [Schema.Types.ObjectId],

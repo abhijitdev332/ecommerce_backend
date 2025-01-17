@@ -34,6 +34,13 @@ const orderSchema = new mongoose.Schema(
       },
       default: "card",
     },
+    status: {
+      type: "string",
+      enum: {
+        values: ["pending", "shipped", "delivered"],
+        message: "{VALUE} is not a status type",
+      },
+    },
   },
   { timestamps: true }
 );

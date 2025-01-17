@@ -1,5 +1,5 @@
 import { subCategoryModel } from "../models/models.js";
-import { AppError, DatabaseError } from "../lib/customError.js";
+import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { successResponse } from "../utils/apiResponse.js";
 async function createCategory(req, res, next) {
   const { categoryId, SubCategoryName, subCategoryImage = "" } = req.body;
@@ -22,6 +22,14 @@ async function createCategory(req, res, next) {
   }
 
   return successResponse(res, 201, "Category Created Successfully", savedCata);
+}
+async function getAllSubCategory(req, res, next) {
+  const subCategories = await subCategoryModel.find({});
+
+  if (!subCategories) {
+    return next(new ServerError("Failed to get all Suv categories", 500));
+  }
+  return successResponse(res, 200, "successfull", subCategories);
 }
 async function getCategory(req, res, next) {
   const { id } = req.params;
@@ -60,4 +68,10 @@ async function deleteCategory(req, res, next) {
   return successResponse(res, 200, "category deleted successfull");
 }
 
-export { createCategory, getCategory, updateCategory, deleteCategory };
+export {
+  createCategory,
+  getCategory,
+  updateCategory,
+  deleteCategory,
+  getAllSubCategory,
+};

@@ -13,11 +13,7 @@ import {
   updateUser,
 } from "../controllers/user.controller.js";
 
-router.post(
-  "/create",
-  validateData(userCreationSchema),
-  asyncWrapper(createUser)
-);
+router.post("/create", asyncWrapper(createUser));
 router.get("/:id", asyncWrapper(getUser));
 router.put(
   "/:id",

@@ -1,5 +1,5 @@
 import { productCate } from "../models/models.js";
-import { AppError, DatabaseError } from "../lib/customError.js";
+import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { successResponse } from "../utils/apiResponse.js";
 async function createProductCata(req, res, next) {
   const { categoryName, categoryImage = "" } = req.body;
@@ -22,6 +22,13 @@ async function createProductCata(req, res, next) {
 
   return successResponse(res, 201, "Category Created Successfully", savedCata);
 }
+async function getAllCategory(req, res, next) {
+  const categories = await productCate.find({});
+  if (!categories) {
+    return next(new ServerError("failed to get categories", 500));
+  }
+  return successResponse(res, 200, "Successfull", categories);
+}
 async function getProductCata(req, res, next) {
   const { id } = req.params;
 
@@ -36,7 +43,7 @@ async function updateProductCata(req, res, next) {
   const { id } = req.params;
   const { categoryName, categoryImage = "" } = req.body;
 
-  const updatedCata = await productModel.findByIdAndUpdate(
+  const updatedCata = await productCate.findByIdAndUpdate(
     id,
     { categoryName, categoryImage },
     {
@@ -44,7 +51,7 @@ async function updateProductCata(req, res, next) {
     }
   );
   if (!updatedCata) {
-    let serverErr = new DatabaseError("Failed to update user!!");
+    let serverErr = new DatabaseError("Failed to update Category!!");
     return next(serverErr);
   }
   return successResponse(res, 200, "category update successfull", updatedCata);
@@ -64,4 +71,5 @@ export {
   getProductCata,
   updateProductCata,
   deleteProductCata,
+  getAllCategory,
 };
