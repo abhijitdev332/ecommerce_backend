@@ -27,7 +27,7 @@ dotenv.config();
 app.use(
   cors({
     credentials: true,
-    origin: allowOrigins,
+    origin: [...allowOrigins],
   })
 );
 // express json
