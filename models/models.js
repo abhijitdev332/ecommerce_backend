@@ -6,6 +6,7 @@ import productCate from "./productCategory.model.js";
 import tokenModel from "./token.model.js";
 import variantModel from "./variant.model.js";
 import subCategoryModel from "./subCategory.model.js";
+import addressModel from "./address.model.js";
 
 export {
   cartModel,
@@ -16,4 +17,5 @@ export {
   tokenModel,
   variantModel,
   subCategoryModel,
+  addressModel,
 };
