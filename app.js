@@ -17,6 +17,7 @@ import {
   variantRoutes,
   subCategoryRoutes,
   AdminRoutes,
+  addressRoutes,
 } from "./routes/routes.js";
 
 import { allowOrigins } from "./config/config.js";
@@ -48,6 +49,7 @@ app.get("/", (req, res) => {
   res.json("this is reponse from backend");
 });
 app.use("/api/user", userRoutes);
+app.use("/api/address", addressRoutes);
 app.use("/api/admin", AdminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);

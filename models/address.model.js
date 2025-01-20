@@ -33,7 +33,6 @@ const AddressSchema = new mongoose.Schema(
     },
     pin: {
       type: Number,
-      max: [6, "pincode should be 6 charlong"],
     },
   },
   { timestamps: true }

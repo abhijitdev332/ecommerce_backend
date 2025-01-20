@@ -6,7 +6,7 @@ import {
   orderModel,
 } from "../models/models.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
-import { RegulatoryComplianceListInstance } from "twilio/lib/rest/numbers/v2/regulatoryCompliance.js";
+
 const getAllProduct = async (req, res, next) => {
   const productsWithStats = await productModel.aggregate([
     // Step 1: Lookup to get variants for each product
@@ -192,7 +192,7 @@ const getAllCategories = async (req, res, next) => {
     {
       $group: {
         _id: "$_id", // Group by category ID
-        categoryName: { $first: "$name" }, // Category name
+        categoryName: { $first: "$categoryName" }, // Category name
         addedDate: { $first: "$createdAt" }, // Category added date
         totalStock: { $sum: "$products.variants.stock" }, // Total stock for the category
         totalSales: { $sum: "$products.variants.sold" }, // Total sales for the category
@@ -205,7 +205,9 @@ const getAllCategories = async (req, res, next) => {
       $addFields: {
         productCount: { $size: "$productCount" }, // Convert product set to count
         categoryName: { $ifNull: ["$categoryName", "Unknown"] }, // Default category name
-        addedDate: { $ifNull: ["$addedDate", null] }, // Handle missing addedDate
+        addedDate: {
+          $ifNull: ["$addedDate", new Date().toLocaleDateString("en-GB")],
+        }, // Handle missing addedDate
       },
     },
 
