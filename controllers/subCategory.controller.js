@@ -3,11 +3,11 @@ import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { successResponse } from "../utils/apiResponse.js";
 async function createCategory(req, res, next) {
   const { categoryId, SubCategoryName, subCategoryImage = "" } = req.body;
-  const hadCata = await subCategoryModel.find({ categoryId });
-  if (hadCata.length > 0) {
-    let userErr = new AppError("Category already in use!!", 400);
-    return next(userErr);
-  }
+  // const hadCata = await subCategoryModel.find({ categoryId });
+  // if (hadCata.length > 0) {
+  //   let userErr = new AppError("Category already in use!!", 400);
+  //   return next(userErr);
+  // }
 
   const newCata = new subCategoryModel({
     categoryId,

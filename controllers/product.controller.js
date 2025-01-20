@@ -25,7 +25,7 @@ async function createProduct(req, res, next) {
   );
 }
 const getTopSellingProducts = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 4, skip = 0 } = req.query;
   try {
     const result = await Order.aggregate([
       // Step 1: Unwind the items array to process each variant in orders
@@ -126,7 +126,7 @@ const getTopSellingProducts = async (req, res, next) => {
   }
 };
 const newArrivalsProducts = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 4, skip = 0 } = req.query;
   const newArrivals = await productModel.aggregate([
     // Step 1: Sort products by createdAt in descending order
     { $sort: { createdAt: -1 } },
@@ -172,6 +172,15 @@ const newArrivalsProducts = async (req, res, next) => {
     return next(new ServerError("Failed to get new arival products"));
   }
   return successResponse(res, 200, "Successfull", newArrivals);
+};
+const getProductByGender = async (req, res, next) => {
+  const { gender = "male" } = req.query;
+  const genderproducts = await productModel.find({ genderFor: gender });
+  if (genderproducts?.length > 0) {
+    return successResponse(res, 200, "successfull", genderproducts);
+  }
+
+  return errorResponse(res, 400, "failed to get by for this category");
 };
 
 async function getProduct(req, res, next) {
@@ -260,5 +269,6 @@ export {
   addReview,
   deleteReview,
   getTopSellingProducts,
+  getProductByGender,
   newArrivalsProducts,
 };

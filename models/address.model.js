@@ -21,7 +21,7 @@ const AddressSchema = new mongoose.Schema(
       type: String,
     },
     state: {
-      type: string,
+      type: String,
       required: true,
     },
     country: {

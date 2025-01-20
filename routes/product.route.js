@@ -7,6 +7,7 @@ import {
   deleteProduct,
   deleteReview,
   getProduct,
+  getProductByGender,
   getTopSellingProducts,
   newArrivalsProducts,
   updateProduct,
@@ -15,6 +16,7 @@ import {
 router.post("/create", asyncWrapper(createProduct));
 router.get("/top", asyncWrapper(getTopSellingProducts));
 router.get("/arival", asyncWrapper(newArrivalsProducts));
+router.get("/", asyncWrapper(getProductByGender));
 router.get("/:id", asyncWrapper(getProduct));
 router.post("/review/add/:id", asyncWrapper(addReview));
 router.delete("/review/remove/:id", asyncWrapper(deleteReview));

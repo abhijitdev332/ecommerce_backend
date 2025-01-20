@@ -2,11 +2,11 @@ import { variantModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { infoResponse, successResponse } from "../utils/apiResponse.js";
 async function createVariant(req, res, next) {
-  const { productId, color, size } = req.body;
-  const hadVariant = await variantModel.find({ productId, color, size });
-  if (hadVariant) {
-    return infoResponse(res, 400, "variant already existed");
-  }
+  const { productId, sku, color, size } = req.body;
+  // const hadVariant = await variantModel.find({ productId, color, size, sku });
+  // if (hadVariant) {
+  //   return infoResponse(res, 400, "variant already existed");
+  // }
   const newVariant = new variantModel({ ...req.body });
   let savedVariant = await newVariant.save();
   if (!savedVariant) {
