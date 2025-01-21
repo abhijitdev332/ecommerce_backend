@@ -229,14 +229,261 @@ const getAllCategories = async (req, res, next) => {
   }
   return successResponse(res, 200, "successfull", categoryStats);
 };
-const getAllOrders = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
-  const allOrders = await orderModel.find({}).limit(limit).skip(skip);
+const getOrdersDetails = async (req, res, next) => {
+  const { orderId } = req.params;
+  const orderDetails = await orderModel.aggregate([
+    // Step 1: Match the specific order ID
+    { $match: { _id: mongoose.Types.ObjectId(orderId) } },
 
-  if (!allOrders) {
+    // Step 2: Lookup to fetch user details
+    {
+      $lookup: {
+        from: "users", // User collection
+        localField: "userId",
+        foreignField: "_id",
+        as: "userDetails",
+      },
+    },
+
+    // Step 3: Lookup to fetch address details
+    {
+      $lookup: {
+        from: "addresses", // Address collection
+        localField: "address",
+        foreignField: "_id",
+        as: "addressDetails",
+      },
+    },
+
+    // Step 4: Unwind products array to process each product individually
+    { $unwind: "$products" },
+
+    // Step 5: Lookup to fetch product details
+    {
+      $lookup: {
+        from: "products", // Product collection
+        localField: "products.productId",
+        foreignField: "_id",
+        as: "products.productDetails",
+      },
+    },
+
+    // Step 6: Lookup to fetch variant details
+    {
+      $lookup: {
+        from: "variants", // Variant collection
+        localField: "products.variantId",
+        foreignField: "_id",
+        as: "products.variantDetails",
+      },
+    },
+
+    // Step 7: Group the data back into a single order document
+    {
+      $group: {
+        _id: "$_id", // Order ID
+        createdAt: { $first: "$createdAt" }, // Order creation date
+        updatedAt: { $first: "$updatedAt" }, // Order update date
+        userDetails: { $first: { $arrayElemAt: ["$userDetails", 0] } }, // Single user
+        addressDetails: { $first: { $arrayElemAt: ["$addressDetails", 0] } }, // Single address
+        products: {
+          $push: {
+            productId: "$products.productId",
+            variantId: "$products.variantId",
+            quantity: "$products.quantity",
+            productDetails: { $arrayElemAt: ["$products.productDetails", 0] },
+            variantDetails: { $arrayElemAt: ["$products.variantDetails", 0] },
+          },
+        },
+        totalAmount: { $first: "$totalAmount" },
+        paymentGateway: { $first: "$paymentGateway" },
+        status: { $first: "$status" },
+        transactionId: { $first: "$transactionId" },
+      },
+    },
+
+    // Step 8: Project the required fields
+    {
+      $project: {
+        _id: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        userDetails: {
+          _id: 1,
+          name: 1,
+          email: 1,
+        },
+        addressDetails: {
+          _id: 1,
+          street: 1,
+          city: 1,
+          state: 1,
+          postalCode: 1,
+          country: 1,
+        },
+        products: {
+          productId: 1,
+          variantId: 1,
+          quantity: 1,
+          productDetails: {
+            name: 1,
+            sku: 1,
+            category: 1,
+          },
+          variantDetails: {
+            color: 1,
+            size: 1,
+            price: 1,
+            stock: 1,
+          },
+        },
+        totalAmount: 1,
+        paymentGateway: 1,
+        status: 1,
+        transactionId: 1,
+      },
+    },
+  ]);
+
+  if (!orderDetails) {
     return errorResponse(res, 500, "failed to get all orders");
   }
-  return successResponse(res, 200, "succesfull", allOrders);
+  return successResponse(res, 200, "succesfull", orderDetails);
+};
+const getAllOrders = async (req, res, next) => {
+  const { limit = 5, skip = 0 } = req.query;
+
+  const orders = await orderModel.aggregate([
+    // Step 1: Lookup to fetch user details
+    {
+      $lookup: {
+        from: "users", // User collection
+        localField: "userId",
+        foreignField: "_id",
+        as: "userDetails",
+      },
+    },
+
+    // Step 2: Lookup to fetch address details
+    {
+      $lookup: {
+        from: "addresses", // Address collection
+        localField: "address",
+        foreignField: "_id",
+        as: "addressDetails",
+      },
+    },
+
+    // Step 3: Unwind the products array to process each product individually
+    { $unwind: { path: "$products", preserveNullAndEmptyArrays: true } },
+
+    // Step 4: Lookup to fetch product details
+    {
+      $lookup: {
+        from: "products", // Product collection
+        localField: "products.productId",
+        foreignField: "_id",
+        as: "products.productDetails",
+      },
+    },
+
+    // Step 5: Lookup to fetch variant details
+    {
+      $lookup: {
+        from: "variants", // Variant collection
+        localField: "products.variantId",
+        foreignField: "_id",
+        as: "products.variantDetails",
+      },
+    },
+
+    // Step 6: Group the data back by order
+    {
+      $group: {
+        _id: "$_id", // Group by Order ID
+        createdAt: { $first: "$createdAt" }, // Order creation date
+        updatedAt: { $first: "$updatedAt" }, // Order update date
+        userDetails: { $first: { $arrayElemAt: ["$userDetails", 0] } }, // Single user
+        addressDetails: { $first: { $arrayElemAt: ["$addressDetails", 0] } }, // Single address
+        products: {
+          $push: {
+            productId: "$products.productId",
+            variantId: "$products.variantId",
+            quantity: "$products.quantity",
+            productDetails: { $arrayElemAt: ["$products.productDetails", 0] },
+            variantDetails: { $arrayElemAt: ["$products.variantDetails", 0] },
+          },
+        },
+        totalAmount: { $first: "$totalAmount" },
+        paymentGateway: { $first: "$paymentGateway" },
+        status: { $first: "$status" },
+        transactionId: { $first: "$transactionId" },
+      },
+    },
+
+    // Step 7: Add fields for first product and total product count
+    {
+      $addFields: {
+        firstProduct: {
+          productName: { $arrayElemAt: ["$products.productDetails.name", 0] }, // First product name
+          variantImages: {
+            $arrayElemAt: ["$products.variantDetails.images", 0], // First variant images
+          },
+        },
+        totalProducts: { $size: "$products" }, // Total products in the product list
+      },
+    },
+
+    // Step 8: Project the required fields
+    {
+      $project: {
+        _id: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        userDetails: {
+          _id: 1,
+          username: 1,
+          email: 1,
+        },
+        addressDetails: {
+          _id: 1,
+          landMark: 1,
+          houseNo: 1,
+          city: 1,
+          state: 1,
+          pin: 1,
+          country: 1,
+        },
+        products: {
+          productId: 1,
+          variantId: 1,
+          quantity: 1,
+          productDetails: {
+            name: 1,
+            sku: 1,
+            category: 1,
+          },
+          variantDetails: {
+            color: 1,
+            size: 1,
+            price: 1,
+            stock: 1,
+          },
+        },
+        totalAmount: 1,
+        paymentGateway: 1,
+        status: 1,
+        transactionId: 1,
+        firstProduct: 1,
+        totalProducts: 1,
+      },
+    },
+  ]);
+
+  if (!orders) {
+    return errorResponse(res, 500, "Failed to get all orders");
+  }
+  return successResponse(res, 200, "success full", orders);
 };
 
 export {
@@ -245,4 +492,5 @@ export {
   getAllUsers,
   getAllCategories,
   getAllOrders,
+  getOrdersDetails,
 };

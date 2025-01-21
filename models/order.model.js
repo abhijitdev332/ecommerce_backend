@@ -1,7 +1,12 @@
 import mongoose, { Schema } from "mongoose";
 const orderSchema = new mongoose.Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "user", required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+      index: true,
+    },
     address: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "address",
@@ -26,10 +31,11 @@ const orderSchema = new mongoose.Schema(
       },
     ],
     totalAmount: { type: Number, required: true },
-    discount: { type: Number },
+    discount: { type: Number, default: 50 },
     transactionId: {
       type: String,
       required: true,
+      unique: true,
     },
     paymentGateway: {
       type: String,
@@ -45,6 +51,7 @@ const orderSchema = new mongoose.Schema(
         values: ["pending", "shipped", "delivered"],
         message: "{VALUE} is not a status type",
       },
+      default: "pending",
     },
   },
   { timestamps: true }

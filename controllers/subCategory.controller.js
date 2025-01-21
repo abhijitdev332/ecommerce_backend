@@ -24,7 +24,7 @@ async function createCategory(req, res, next) {
   return successResponse(res, 201, "Category Created Successfully", savedCata);
 }
 async function getAllSubCategory(req, res, next) {
-  const subCategories = await subCategoryModel.find({});
+  const subCategories = await subCategoryModel.find({}).sort({ createdAt: -1 });
 
   if (!subCategories) {
     return next(new ServerError("Failed to get all Suv categories", 500));

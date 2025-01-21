@@ -1,5 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import { string } from "zod";
 
 const ReviewSchema = new Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -9,8 +8,8 @@ const ReviewSchema = new Schema({
 });
 const productDetailsSchema = new Schema({
   packOf: {
-    type: Number,
-    default: 1,
+    type: String,
+    default: "1",
   },
   styleCode: {
     type: String,
@@ -20,12 +19,12 @@ const productDetailsSchema = new Schema({
   },
   fabricCare: String,
   pattern: { type: String },
-  pockets: Number,
+  pockets: String,
   sleeve: String,
   SuitableFor: String,
   fit: String,
   style: {
-    type: [String],
+    type: String,
     enum: {
       values: ["casual", "formal", "party", "gym"],
       message: "{VALUE} is not a valid style",

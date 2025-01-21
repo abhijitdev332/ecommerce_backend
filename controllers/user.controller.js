@@ -3,20 +3,21 @@ import { AppError, DatabaseError } from "../lib/customError.js";
 import { encrypt } from "../lib/encryptPass.js";
 import { successResponse } from "../utils/apiResponse.js";
 async function createUser(req, res, next) {
-  const { name, email, password, phone } = req.body;
-  const haveUser = await userModel.find({
-    $or: [{ email: email }, { phoneNumber: phone }],
-  });
-  if (haveUser.length > 0) {
-    let userErr = new AppError("User already in use!!", 400);
-    return next(userErr);
-  }
+  const { name, email, password, phone, role } = req.body;
+  // const haveUser = await userModel.find({
+  //   $or: [{ email: email }, { phoneNumber: phone }],
+  // });
+  // if (haveUser.length > 0) {
+  //   let userErr = new AppError("User already in use!!", 400);
+  //   return next(userErr);
+  // }
   let encryptPass = await encrypt(password);
   const user = new userModel({
     username: name,
     email,
     password: encryptPass,
     phoneNumber: phone,
+    roles: [role?.toUpperCase()],
   });
   let savedUser = await user.save();
   if (!savedUser) {

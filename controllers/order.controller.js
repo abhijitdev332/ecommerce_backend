@@ -23,7 +23,13 @@ async function createOrder(req, res, next) {
 async function getOrder(req, res, next) {
   const { id } = req.params;
 
-  const matchedOrder = await orderModel.findById(id);
+  const matchedOrder = await orderModel
+    .findById(id)
+    .populate("products.productId", { name: 1, sku: 1 })
+    .populate("products.variantId")
+    .populate("userId")
+    .populate("address");
+
   if (!matchedOrder) {
     let userErr = new AppError("can't find any user", 400);
     return next(userErr);
