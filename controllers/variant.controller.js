@@ -1,6 +1,11 @@
 import { variantModel } from "../models/models.js";
-import { AppError, DatabaseError } from "../lib/customError.js";
-import { infoResponse, successResponse } from "../utils/apiResponse.js";
+import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
+import {
+  errorResponse,
+  infoResponse,
+  successResponse,
+} from "../utils/apiResponse.js";
+import { uploadToCloudinary } from "../middleware/uploadImage.js";
 async function createVariant(req, res, next) {
   const { productId, sku, color, size } = req.body;
   // const hadVariant = await variantModel.find({ productId, color, size, sku });
@@ -59,5 +64,59 @@ async function deleteVariant(req, res, next) {
   }
   return successResponse(res, 200, "product variant Deleted");
 }
+async function createMany(req, res, next) {
+  const { variantsArr } = req.body;
 
-export { createVariant, getVariant, updateVariant, deleteVariant };
+  const variantsData = await variantModel.insertMany(variantsArr);
+
+  if (!variantsData) {
+    return errorResponse(res, 500, "Failed create varinats");
+  }
+
+  return successResponse(res, 201, "succesfull", variantsData);
+}
+async function imageUpload(req, res, next) {
+  try {
+    const folder = "ecommerce"; // Replace with your Cloudinary folder name
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return errorResponse(res, 400, "No images provided.");
+      //  res.status(400).json({ message: });
+    }
+
+    // Upload each file to Cloudinary
+    const uploadPromises = files.map((file) =>
+      uploadToCloudinary(file.buffer, folder)
+    );
+
+    const uploadResults = await Promise.all(uploadPromises);
+
+    // Map each uploaded image to its secure_url
+    const imageUrls = uploadResults.map((result) => ({
+      url: result?.secure_url, // Cloudinary URL for the image
+      publicId: result?.public_id, // Optional: Store public ID for future management
+    }));
+
+    // Send image URLs back to the client
+    return successResponse(res, 201, "images upload successfull", [
+      ...imageUrls,
+    ]);
+    // res.status(200).json({
+    //   message: "Images uploaded successfully.",
+    //   imageUrls,
+    // });
+  } catch (err) {
+    let uploadErr = new ServerError("Failed to upload image in Database!!");
+    next(uploadErr);
+  }
+}
+
+export {
+  createVariant,
+  getVariant,
+  updateVariant,
+  deleteVariant,
+  createMany,
+  imageUpload,
+};
