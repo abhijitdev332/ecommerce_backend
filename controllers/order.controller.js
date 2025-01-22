@@ -18,7 +18,7 @@ async function createOrder(req, res, next) {
     return next(userErr);
   }
 
-  return successResponse(res, 201, "Variant Created Successfully", savedOrder);
+  return successResponse(res, 201, "Order Successfully", savedOrder);
 }
 async function getOrder(req, res, next) {
   const { id } = req.params;

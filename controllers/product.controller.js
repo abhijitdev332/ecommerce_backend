@@ -1,4 +1,4 @@
-import { productModel, variantModel } from "../models/models.js";
+import { orderModel, productModel, variantModel } from "../models/models.js";
 import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 async function createProduct(req, res, next) {
@@ -96,7 +96,7 @@ async function deleteReview(req, res, next) {
 const getTopSellingProducts = async (req, res, next) => {
   const { limit = 4, skip = 0 } = req.query;
   try {
-    const result = await Order.aggregate([
+    const result = await orderModel.aggregate([
       // Step 1: Unwind the items array to process each variant in orders
       { $unwind: "$items" },
 
@@ -219,6 +219,9 @@ const newArrivalsProducts = async (req, res, next) => {
       $addFields: {
         totalVariants: { $size: "$variants" }, // Count of all variants
         totalStock: { $sum: "$variants.stock" }, // Total stock across all variants
+        firstVariantImages: {
+          $arrayElemAt: ["$variants.images", 0], // Get the images of the first variant
+        },
       },
     },
 
@@ -233,6 +236,7 @@ const newArrivalsProducts = async (req, res, next) => {
         createdAt: 1,
         totalVariants: 1,
         totalStock: 1,
+        firstVariantImages: 1,
       },
     },
   ]);
