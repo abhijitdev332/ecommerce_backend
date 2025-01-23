@@ -29,5 +29,23 @@ const uploadToCloudinary = async (fileBuffer, folder) => {
       .end(fileBuffer);
   });
 };
+const uploadSingleToCloudinary = (fileBuffer, folder) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder }, // Specify the folder name in Cloudinary
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve({
+          url: result.secure_url,
+          public_id: result.public_id,
+        });
+      }
+    );
 
-export { uploader, uploadToCloudinary };
+    stream.end(fileBuffer); // Send the buffer to the stream
+  });
+};
+
+export { uploader, uploadToCloudinary, uploadSingleToCloudinary };

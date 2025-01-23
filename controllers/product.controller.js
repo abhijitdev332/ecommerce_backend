@@ -54,9 +54,18 @@ async function updateProduct(req, res, next) {
 }
 async function deleteProduct(req, res, next) {
   const { id } = req.params;
+  const variantDeleted = await variantModel.deleteMany({ productId: id });
+  if (!variantDeleted) {
+    let serverErr = new DatabaseError(
+      "failed to delete Product and variants!!"
+    );
+    return next(serverErr);
+  }
   const deletedUser = await productModel.findByIdAndDelete(id);
   if (!deletedUser) {
-    let serverErr = new DatabaseError("failed to delete user!!");
+    let serverErr = new DatabaseError(
+      "failed to delete products and variants!!"
+    );
     return next(serverErr);
   }
   return successResponse(res, 200, "product Deleted");

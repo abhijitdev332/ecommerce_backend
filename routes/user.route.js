@@ -12,8 +12,9 @@ import {
   getUser,
   updateUser,
 } from "../controllers/user.controller.js";
+import { uploader } from "../middleware/uploadImage.js";
 
-router.post("/create", asyncWrapper(createUser));
+router.post("/create", uploader.single("image"), asyncWrapper(createUser));
 router.get("/:id", asyncWrapper(getUser));
 router.put(
   "/:id",
@@ -21,6 +22,6 @@ router.put(
   validateData(userUpdateSchema),
   asyncWrapper(updateUser)
 );
-router.delete("/:id", verifyToken, asyncWrapper(deleteUser));
+router.delete("/:id", asyncWrapper(deleteUser));
 
 export default router;

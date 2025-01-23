@@ -7,9 +7,14 @@ import {
   updateProductCata,
 } from "../controllers/category.controller.js";
 import asyncWrapper from "../utils/asyncWrapper.js";
+import { uploader } from "../middleware/uploadImage.js";
 const router = express.Router();
 
-router.post("/create", asyncWrapper(createProductCata));
+router.post(
+  "/create",
+  uploader.single("image"),
+  asyncWrapper(createProductCata)
+);
 router.get("/", asyncWrapper(getAllCategory));
 router.get("/:id", asyncWrapper(getProductCata));
 router.put("/update/:id", asyncWrapper(updateProductCata));

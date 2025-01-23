@@ -1,18 +1,27 @@
-import { subCategoryModel } from "../models/models.js";
+import { productModel, subCategoryModel } from "../models/models.js";
 import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { successResponse } from "../utils/apiResponse.js";
+import { uploadSingleToCloudinary } from "../middleware/uploadImage.js";
 async function createCategory(req, res, next) {
-  const { categoryId, SubCategoryName, subCategoryImage = "" } = req.body;
-  // const hadCata = await subCategoryModel.find({ categoryId });
-  // if (hadCata.length > 0) {
-  //   let userErr = new AppError("Category already in use!!", 400);
-  //   return next(userErr);
-  // }
+  const { name, categoryId } = req.body;
+  let cateName = JSON.parse(name);
+  let cateId = JSON.parse(categoryId);
+  const hadCata = await subCategoryModel.find({
+    $and: [{ SubCategoryName: cateName }, { categoryId: cateId }],
+  });
+  if (hadCata.length > 0) {
+    let cateErr = new AppError("Sub Category already in use!!", 400);
+    return next(cateErr);
+  }
+  const fileBuffer = req.file.buffer; // File buffer from Multer
+  const folder = "subcategory"; // Cloudinary folder name
 
+  // Upload image to Cloudinary
+  const categoryImageUrl = await uploadSingleToCloudinary(fileBuffer, folder);
   const newCata = new subCategoryModel({
-    categoryId,
-    SubCategoryName,
-    subCategoryImage,
+    categoryId: cateId,
+    SubCategoryName: cateName,
+    subCategoryImage: categoryImageUrl?.url,
   });
 
   let savedCata = await newCata.save();
@@ -60,6 +69,7 @@ async function updateCategory(req, res, next) {
 }
 async function deleteCategory(req, res, next) {
   const { id } = req.params;
+  const productDel = await productModel.deleteMany({ subCategory: id });
   const deletedCata = await subCategoryModel.findByIdAndDelete(id);
   if (!deletedCata) {
     let serverErr = new DatabaseError("failed to delete user!!");
