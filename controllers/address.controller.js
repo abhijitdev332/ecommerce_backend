@@ -1,6 +1,10 @@
 import { addressModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
-import { infoResponse, successResponse } from "../utils/apiResponse.js";
+import {
+  errorResponse,
+  infoResponse,
+  successResponse,
+} from "../utils/apiResponse.js";
 async function createAddress(req, res, next) {
   const newAddress = new addressModel({ ...req.body });
   let savedAddress = await newAddress.save();
@@ -12,7 +16,7 @@ async function createAddress(req, res, next) {
   return successResponse(
     res,
     201,
-    "address Created Successfully",
+    "Address Created Successfully",
     savedAddress
   );
 }
@@ -53,5 +57,21 @@ async function deleteAddress(req, res, next) {
   }
   return successResponse(res, 200, "Address Deleted");
 }
+async function getUsersAddress(req, res, next) {
+  const { userId } = req.params;
+  let addresses = await addressModel.find({ userId: userId });
 
-export { createAddress, getAddress, updateAddress, deleteAddress };
+  if (!addresses) {
+    return errorResponse(res, 500, "Failed to get user address");
+  }
+
+  return successResponse(res, 200, "successfull", addresses);
+}
+
+export {
+  createAddress,
+  getAddress,
+  updateAddress,
+  deleteAddress,
+  getUsersAddress,
+};

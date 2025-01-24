@@ -10,12 +10,14 @@ const AddressSchema = new mongoose.Schema(
     },
     landMark: {
       type: String,
+      required: true,
     },
     houseNo: {
       type: String,
     },
     city: {
       type: String,
+      required: true,
     },
     district: {
       type: String,
@@ -26,13 +28,15 @@ const AddressSchema = new mongoose.Schema(
     },
     country: {
       type: String,
+      required: true,
       enum: {
         values: ["india", "usa", "uk", "canada"],
         message: "{VALUE} is not a valid country",
       },
     },
     pin: {
-      type: Number,
+      type: String,
+      required: true,
     },
   },
   { timestamps: true }

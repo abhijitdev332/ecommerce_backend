@@ -34,6 +34,16 @@ const getAllProduct = async (req, res, next) => {
       $addFields: {
         totalStock: { $sum: "$variants.stock" }, // Total stock across all variants
         firstVariant: { $arrayElemAt: ["$variants", 0] }, // Get the first variant
+        totalVariants: {
+          $size: {
+            $ifNull: [
+              {
+                $setUnion: ["$variants.color"], // Find unique colors
+              },
+              [],
+            ],
+          },
+        },
       },
     },
 
@@ -47,6 +57,7 @@ const getAllProduct = async (req, res, next) => {
         categoryDetails: 1, // Category name
         firstVariant: 1, //first variant to show
         createdAt: 1, // Product added date
+        totalVariants: 1,
       },
     },
   ]);
@@ -193,6 +204,7 @@ const getAllCategories = async (req, res, next) => {
       $group: {
         _id: "$_id", // Group by category ID
         categoryName: { $first: "$categoryName" }, // Category name
+        categoryImage: { $first: "$categoryImage" },
         addedDate: { $first: "$createdAt" }, // Category added date
         totalStock: { $sum: "$products.variants.stock" }, // Total stock for the category
         totalSales: { $sum: "$products.variants.sold" }, // Total sales for the category
@@ -205,6 +217,7 @@ const getAllCategories = async (req, res, next) => {
       $addFields: {
         productCount: { $size: "$productCount" }, // Convert product set to count
         categoryName: { $ifNull: ["$categoryName", "Unknown"] }, // Default category name
+        categoryImage: { $ifNull: ["$categoryImage", "Unknown"] },
         addedDate: {
           $ifNull: ["$addedDate", new Date().toLocaleDateString("en-GB")],
         }, // Handle missing addedDate
@@ -216,6 +229,7 @@ const getAllCategories = async (req, res, next) => {
       $project: {
         _id: 1,
         categoryName: 1,
+        categoryImage: 1,
         totalStock: 1,
         totalSales: 1,
         productCount: 1,
