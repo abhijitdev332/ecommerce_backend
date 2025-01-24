@@ -45,6 +45,7 @@ app.use(
 app.use(cookie());
 // cloudinary image storage
 configureCloudinary();
+app.disable("etag");
 app.get("/", (req, res) => {
   res.json("this is reponse from backend");
 });
