@@ -45,7 +45,11 @@ app.use(
 app.use(cookie());
 // cloudinary image storage
 configureCloudinary();
-app.disable("etag");
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store"); // Prevent caching
+  next();
+});
+
 app.get("/", (req, res) => {
   res.json("this is reponse from backend");
 });
