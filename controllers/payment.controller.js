@@ -1,5 +1,9 @@
 import { stripeInt } from "../config/stripe.js";
-import { successResponse } from "../utils/apiResponse.js";
+import {
+  errorResponse,
+  infoResponse,
+  successResponse,
+} from "../utils/apiResponse.js";
 // payment intent
 const newPayment = async (req, res) => {
   const session = await stripeInt.paymentIntents.create({
@@ -16,7 +20,7 @@ const newPayment = async (req, res) => {
 };
 // chekcout session
 const checkout = async (req, res) => {
-  const { productData, delivery, discountCode } = req.body;
+  const { productData, delivery, discountCode, addressId, userId } = req.body;
   let line_items = productData?.map((ele) => ({
     price_data: {
       currency: "usd",
@@ -77,13 +81,44 @@ const checkout = async (req, res) => {
         coupon: coupon.id,
       },
     ],
-    success_url: "http://localhost:4000/success",
+    success_url:
+      "http://localhost:4000/success?session_id={CHECKOUT_SESSION_ID}",
     cancel_url: "http://localhost:4000/declined",
+    metadata: {
+      address: addressId,
+      userId: userId,
+    },
   });
 
-  return successResponse(res, 200, "redirected", {
+  return successResponse(res, 200, "session created", {
     paymentUrl: session.url,
+    sessionId: session.id,
   });
 };
 
-export { newPayment, checkout };
+const verifyPayment = async (req, res, next) => {
+  const { sessionId } = req.body;
+  if (!sessionId) {
+    return infoResponse(res, 404, "Please provide a valid sessionId");
+  }
+
+  // Retrieve the session from Stripe
+  const session = await stripeInt.checkout.sessions.retrieve(sessionId);
+  // Check the payment status
+  if (session.payment_status === "paid") {
+    return successResponse(res, 200, "Payment successful", session);
+    // res.status(200).json({ message: "Payment successful", session });
+  } else if (session.payment_status === "unpaid") {
+    return errorResponse(res, 400, "Payment not completed", session);
+    // res.status(400).json({ message: "Payment not completed", session });
+  } else {
+    return errorResponse(
+      res,
+      400,
+      `Payment status: ${session.payment_status}`,
+      session
+    );
+  }
+};
+
+export { newPayment, checkout, verifyPayment };

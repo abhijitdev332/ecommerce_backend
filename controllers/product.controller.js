@@ -231,6 +231,15 @@ const newArrivalsProducts = async (req, res, next) => {
         firstVariantImages: {
           $arrayElemAt: ["$variants.images", 0], // Get the images of the first variant
         },
+        firstVariantSellPrice: {
+          $arrayElemAt: ["$variants.sellPrice", 0],
+        },
+        firstVariantBasePrice: {
+          $arrayElemAt: ["$variants.basePrice", 0],
+        },
+        firstVariantDiscount: {
+          $arrayElemAt: ["$variants.discount", 0],
+        },
       },
     },
 
@@ -241,11 +250,15 @@ const newArrivalsProducts = async (req, res, next) => {
         sku: 1,
         price: 1,
         imgurl: 1,
+        averageRating: 1,
         category: 1,
         createdAt: 1,
         totalVariants: 1,
         totalStock: 1,
         firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantDiscount: 1,
+        firstVariantBasePrice: 1,
       },
     },
   ]);

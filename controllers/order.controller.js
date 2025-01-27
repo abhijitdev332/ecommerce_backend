@@ -2,16 +2,17 @@ import { orderModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { infoResponse, successResponse } from "../utils/apiResponse.js";
 async function createOrder(req, res, next) {
-  const {
+  const { userId, products, totalAmount, discount, transactionId, address } =
+    req.body;
+
+  const newOrder = new orderModel({
     userId,
-    products,
     totalAmount,
     discount,
+    address,
     transactionId,
-    paymentGateway,
-  } = req.body;
-
-  const newOrder = new orderModel({ ...req.body });
+    products,
+  });
   let savedOrder = await newOrder.save();
   if (!savedOrder) {
     let userErr = new DatabaseError("Failed to create user!!");
