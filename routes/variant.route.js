@@ -6,6 +6,7 @@ import {
   updateVariant,
   createMany,
   imageUpload,
+  getProductsByColor,
 } from "../controllers/variant.controller.js";
 import asyncWrapper from "../utils/asyncWrapper.js";
 import { uploader } from "../middleware/uploadImage.js";
@@ -18,6 +19,7 @@ router.post(
   asyncWrapper(imageUpload)
 );
 router.post("/insert", asyncWrapper(createMany));
+router.get("/q", asyncWrapper(getProductsByColor));
 router.get("/:id", asyncWrapper(getVariant));
 router.put("/update/:id", asyncWrapper(updateVariant));
 router.delete("/remove/:id", asyncWrapper(deleteVariant));

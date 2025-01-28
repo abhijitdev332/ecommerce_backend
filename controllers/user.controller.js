@@ -1,7 +1,7 @@
 import { userModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { encrypt } from "../lib/encryptPass.js";
-import { successResponse } from "../utils/apiResponse.js";
+import { errorResponse, successResponse } from "../utils/apiResponse.js";
 import { uploadSingleToCloudinary } from "../middleware/uploadImage.js";
 async function createUser(req, res, next) {
   // const { name, email, password, phone, role } = req.body;
@@ -46,6 +46,16 @@ async function createUser(req, res, next) {
   //   data: resUser,
   // });
 }
+async function uploadImage(req, res, next) {
+  const fileBuffer = req?.file?.buffer; // File buffer from Multer
+  const folder = "users"; // Cloudinary folder name
+  let userImageUrl;
+  if (fileBuffer) {
+    userImageUrl = await uploadSingleToCloudinary(fileBuffer, folder);
+    return successResponse(res, 200, "succesfully uploaded", userImageUrl?.url);
+  }
+  return errorResponse(res, 400, "Something went wrong");
+}
 async function getUser(req, res, next) {
   const { id } = req.params;
 
@@ -64,20 +74,29 @@ async function updateUser(req, res, next) {
   const { id } = req.params;
   const { username, email, password } = req.body;
 
-  const updatedUser = await userModel.findByIdAndUpdate(
-    id,
-    { username, email, password },
-    {
-      runValidators: true,
-    }
-  );
+  const fileBuffer = req?.file?.buffer; // File buffer from Multer
+  const folder = "users"; // Cloudinary folder name
+  let userImageUrl;
+  if (fileBuffer) {
+    userImageUrl = await uploadSingleToCloudinary(fileBuffer, folder);
+  }
+
+  const updatedUser = await userModel
+    .findByIdAndUpdate(
+      id,
+      { username, email, password, imgUrl: userImageUrl?.url || "" },
+      {
+        runValidators: true,
+      }
+    )
+    .select({ password: 0 });
   if (!updatedUser) {
     let serverErr = new DatabaseError("Failed to update user!!");
     return next(serverErr);
   }
 
   res.status(200).json({
-    msg: "User updated Successfully",
+    message: "User updated Successfully",
     data: updatedUser,
   });
 }
@@ -93,4 +112,4 @@ async function deleteUser(req, res, next) {
   });
 }
 
-export { createUser, getUser, updateUser, deleteUser };
+export { createUser, getUser, updateUser, deleteUser, uploadImage };

@@ -19,7 +19,9 @@ async function createProduct(req, res, next) {
 async function getProduct(req, res, next) {
   const { id } = req.params;
 
-  const matchedProduct = await productModel.findOne({ _id: id });
+  const matchedProduct = await productModel
+    .findOne({ _id: id })
+    .populate("reviews.user", { username: 1 });
   const productVariants = await variantModel.find({
     productId: matchedProduct?._id,
   });
@@ -72,7 +74,7 @@ async function deleteProduct(req, res, next) {
 }
 async function addReview(req, res, next) {
   const { id } = req.params;
-  const { userId, name, rating, comment } = req.body;
+  const { userId, rating, comment } = req.body;
 
   const product = await productModel.findById(id);
   if (!product) {
@@ -81,11 +83,12 @@ async function addReview(req, res, next) {
 
   product.reviews.push({
     user: userId,
-    name,
     rating,
     comment,
   });
   await product.save();
+  await productModel.calculateReviewStats(id);
+  return successResponse(res, 200, "successfull");
 }
 async function deleteReview(req, res, next) {
   const { id } = req.params;
@@ -101,19 +104,21 @@ async function deleteReview(req, res, next) {
   await product.save();
 
   await product.save();
+  await productModel.calculateReviewStats(id);
+  return successResponse(res, 200, "successfully deleted");
 }
 const getTopSellingProducts = async (req, res, next) => {
   const { limit = 4, skip = 0 } = req.query;
   try {
     const result = await orderModel.aggregate([
       // Step 1: Unwind the items array to process each variant in orders
-      { $unwind: "$items" },
+      { $unwind: "$products" },
 
       // Step 2: Group by variantId to calculate total sales for each variant
       {
         $group: {
-          _id: "$items.variantId", // Group by variantId
-          totalSold: { $sum: "$items.quantity" }, // Calculate total quantity sold
+          _id: "$products.variantId", // Group by variantId
+          totalSold: { $sum: "$products.quantity" }, // Calculate total quantity sold
         },
       },
 
@@ -139,61 +144,63 @@ const getTopSellingProducts = async (req, res, next) => {
       },
       { $unwind: "$productDetails" }, // Unwind product details
 
-      // Step 5: Group by product to calculate total sales for each product
+      // Step 5: Group by product to calculate total sales and include all variants
       {
         $group: {
           _id: "$productDetails._id", // Group by productId
-          productName: { $first: "$productDetails.name" }, // Get product name
+          name: { $first: "$productDetails.name" }, // Get product name
+          averageRating: { $first: "$productDetails.averageRating" }, // Get product name
           sku: { $first: "$productDetails.sku" }, // Get product SKU
           totalProductSales: { $sum: "$totalSold" }, // Total sales for the product
           variants: {
             $push: {
+              sku: "$variantDetails.sku",
               variantId: "$_id",
               color: "$variantDetails.color",
               size: "$variantDetails.size",
+              sellPrice: "$variantDetails.sellPrice",
               totalSold: "$totalSold",
+              discount: "$variantDetails.discount",
+              images: "$variantDetails.images",
             },
           },
+          totalVariants: { $sum: 1 }, // Count total variants
+          firstVariant: { $first: "$variants" }, // Automatically get the first variant
         },
       },
 
       // Step 6: Sort products by total sales in descending order
       { $sort: { totalProductSales: -1 } },
 
-      // Step 7: Limit to the top-selling product
-      { $limit: limit },
-      { $skip: skip },
+      // Step 7: Limit results to the top-selling products
+      { $limit: +limit },
+      { $skip: +skip },
+      // {
+      //   $addFields: {
+      //     firstVariantImages: { $arrayElemAt: ["$variantDetails.images", 0] }, // Get the first variant images
+      //     firstVariantSellPrice: {
+      //       $arrayElemAt: ["$variantDetails.sellPrice", 0],
+      //     }, // Get the first variant sellprice
+      //     firstVariantDiscount: {
+      //       $arrayElemAt: ["$variantDetails.discount", 0],
+      //     },
+      //   },
+      // },
 
-      // Step 8: Add a field for the top-selling variant of the product
-      {
-        $addFields: {
-          topSellingVariant: {
-            $arrayElemAt: [
-              {
-                $slice: [
-                  {
-                    $sortArray: {
-                      input: "$variants",
-                      sortBy: { totalSold: -1 },
-                    },
-                  },
-                  0,
-                ],
-              },
-              0,
-            ],
-          },
-        },
-      },
-
-      // Step 9: Project only the required fields
+      // Step 8: Project only the required fields
       {
         $project: {
           _id: 1,
-          productName: 1,
+          name: 1,
           sku: 1,
+          averageRating: 1,
           totalProductSales: 1,
-          topSellingVariant: 1,
+          totalVariants: 1,
+          firstVariant: { $arrayElemAt: ["$variants", 0] }, // Ensure the first variant is included
+          firstVariantImages: { $arrayElemAt: ["$variants.images", 0] },
+          firstVariantSellPrice: { $arrayElemAt: ["$variants.sellPrice", 0] },
+          firstVariantDiscount: { $arrayElemAt: ["$variants.discount", 0] },
+          // variants: 1, // List of all variants
         },
       },
     ]);
@@ -210,8 +217,8 @@ const newArrivalsProducts = async (req, res, next) => {
     { $sort: { createdAt: -1 } },
 
     // Step 2: Limit the number of results
-    { $limit: limit },
-    { $skip: skip },
+    { $limit: +limit },
+    { $skip: +skip },
 
     // Step 3: Lookup to get variants for each product
     {
@@ -277,6 +284,74 @@ const getProductByGender = async (req, res, next) => {
 
   return errorResponse(res, 400, "failed to get by for this category");
 };
+async function getProductsByCategory(req, res, next) {
+  const { query = "casual" } = req.query;
+  const productsByCategory = await productModel.aggregate([
+    // Step 1: Lookup to join categories
+    {
+      $lookup: {
+        from: "categories", // Name of the categories collection
+        localField: "category", // Field in products referencing category ID
+        foreignField: "_id", // Field in categories being referenced
+        as: "categoryInfo", // Alias for the joined data
+      },
+    },
+    // Step 2: Match products by category name
+    {
+      $match: {
+        "categoryInfo.categoryName": query, // Replace with the desired category name
+      },
+    },
+    // Step 3: Lookup to join variants
+    {
+      $lookup: {
+        from: "variants", // Name of the variants collection
+        localField: "_id", // Field in products referencing the product ID
+        foreignField: "productId", // Field in variants referencing the product ID
+        as: "variants", // Alias for the joined data
+      },
+    },
+    // Step 4: Add fields for total variants and first variant details
+    {
+      $addFields: {
+        totalVariants: { $size: "$variants" }, // Count the total variants
+        firstVariant: { $arrayElemAt: ["$variants", 0] }, // Get the first variant
+        firstVariantImages: { $arrayElemAt: ["$variants.images", 0] }, // Get the first variant images
+        firstVariantSellPrice: { $arrayElemAt: ["$variants.sellPrice", 0] }, // Get the first variant sellprice
+        firstVariantDiscount: { $arrayElemAt: ["$variants.discount", 0] },
+      },
+    },
+    // Step 5: Project fields to include only relevant data
+    {
+      $project: {
+        name: 1, // Product name
+        price: 1, // Product price
+        sku: 1, // SKU
+        imgurl: 1, // Product image
+        averageRating: 1,
+        totalStock: 1, // Optional stock field
+        createdAt: 1, // Creation date
+        category: { $arrayElemAt: ["$categoryInfo.categoryName", 0] }, // Category name from lookup
+        totalVariants: 1, // Total variants count
+        firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantDiscount: 1,
+        "firstVariant.color": 1, // First variant color
+        "firstVariant.size": 1, // First variant size
+        "firstVariant.sellPrice": 1, // First variant price
+        "firstVariant.stock": 1, // First variant stock
+        "firstVariant.images": 1, // First variant image
+        "firstVariant.discount": 1, // First variant discount
+      },
+    },
+  ]);
+
+  if (!productsByCategory) {
+    return errorResponse(res, 400, "can't find products by this category");
+  }
+
+  return successResponse(res, 200, "successfull", productsByCategory);
+}
 
 export {
   createProduct,
@@ -288,4 +363,5 @@ export {
   getTopSellingProducts,
   getProductByGender,
   newArrivalsProducts,
+  getProductsByCategory,
 };

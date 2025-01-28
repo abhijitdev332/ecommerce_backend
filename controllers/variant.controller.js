@@ -111,6 +111,95 @@ async function imageUpload(req, res, next) {
     next(uploadErr);
   }
 }
+async function getProductsByColor(req, res, next) {
+  let { color = "" } = req.query;
+
+  const result = await variantModel.aggregate([
+    // Step 1: Match variants by the given colors
+    {
+      $match: {
+        color: color.toLowerCase(),
+        // Filter variants by colors
+      },
+    },
+
+    // Step 2: Lookup the related product details
+    {
+      $lookup: {
+        from: "products", // Name of the products collection
+        localField: "productId", // Link to productId in the variants
+        foreignField: "_id", // Product _id
+        as: "productDetails", // Output array for product details
+      },
+    },
+
+    // Step 3: Unwind product details (since each variant is linked to one product)
+    {
+      $unwind: "$productDetails",
+    },
+
+    // Step 4: Group by product to consolidate variants and their details
+    {
+      $group: {
+        _id: "$productDetails._id", // Group by productId
+        name: { $first: "$productDetails.name" }, // Product name
+        sku: { $first: "$productDetails.sku" }, // Product SKU
+        category: { $first: "$productDetails.category" }, // Product category
+        imgurl: { $first: "$productDetails.imgUrl" }, // Product image
+        variants: {
+          $push: {
+            variantId: "$_id", // Variant ID
+            color: "$color", // Variant color
+            size: "$size", // Variant size
+            basePrice: "$basePrice",
+            sellPrice: "$sellPrice", // Variant price
+            stock: "$stock", // Variant stock
+            images: "$images", // Variant image
+            discount: "$discount",
+          },
+        },
+      },
+    },
+
+    // Step 5: Add a field for the total number of variants matching the colors
+    {
+      $addFields: {
+        totalVariants: { $size: "$variants" }, // Count of all variants
+        firstVariant: { $arrayElemAt: ["$variants", 0] }, // Get the first variant
+        firstVariantImages: { $arrayElemAt: ["$variants.images", 0] }, // Get the first variant images
+        firstVariantSellPrice: { $arrayElemAt: ["$variants.sellPrice", 0] }, // Get the first variant sellprice
+        firstVariantDiscount: { $arrayElemAt: ["$variants.discount", 0] },
+      },
+    },
+
+    // Step 6: Project only the required fields
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        sku: 1,
+        category: 1,
+        imgurl: 1,
+        firstVariant: 1,
+        firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantDiscount: 1,
+        totalVariants: 1,
+        variants: 1, // List of all variants matching the colors
+      },
+    },
+
+    // Step 7: (Optional) Sort by totalVariants or any other field
+    {
+      $sort: { totalVariants: -1 }, // Sort products by number of matching variants
+    },
+  ]);
+  if (!result) {
+    return errorResponse(res, 400, "failed to get products");
+  }
+
+  return successResponse(res, 200, "successfull", result);
+}
 
 export {
   createVariant,
@@ -119,4 +208,5 @@ export {
   deleteVariant,
   createMany,
   imageUpload,
+  getProductsByColor,
 };

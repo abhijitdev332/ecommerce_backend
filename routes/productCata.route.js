@@ -15,6 +15,7 @@ router.post(
   uploader.single("image"),
   asyncWrapper(createProductCata)
 );
+
 router.get("/", asyncWrapper(getAllCategory));
 router.get("/:id", asyncWrapper(getProductCata));
 router.put("/update/:id", asyncWrapper(updateProductCata));

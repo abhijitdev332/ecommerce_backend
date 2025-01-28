@@ -1,6 +1,6 @@
 import { productCate, productModel } from "../models/models.js";
 import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
-import { successResponse } from "../utils/apiResponse.js";
+import { errorResponse, successResponse } from "../utils/apiResponse.js";
 import { uploadSingleToCloudinary } from "../middleware/uploadImage.js";
 
 async function createProductCata(req, res, next) {

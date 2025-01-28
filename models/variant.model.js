@@ -11,7 +11,7 @@ const VariantSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    color: { type: String },
+    color: { type: String, index: true },
     size: { type: String },
     basePrice: { type: Number },
     sellPrice: { type: Number, required: true },

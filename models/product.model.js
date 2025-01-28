@@ -1,8 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const ReviewSchema = new Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  name: { type: String, required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
   rating: { type: Number, max: 5, default: 0 },
   comment: { type: String, required: true },
 });
@@ -100,6 +99,34 @@ const ProductSchema = new Schema(
   },
   { timestamps: true }
 );
+ProductSchema.statics.calculateReviewStats = async function (productId) {
+  const result = await this.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(productId) } },
+    { $unwind: "$reviews" }, // Decompose the reviews array
+    {
+      $group: {
+        _id: "$_id",
+        totalReviews: { $sum: 1 }, // Count the number of reviews
+        averageRating: { $avg: "$reviews.rating" }, // Calculate the average rating
+      },
+    },
+  ]);
+
+  if (result.length > 0) {
+    const { totalReviews, averageRating } = result[0];
+    // Update the product document with the calculated values
+    await this.findByIdAndUpdate(productId, {
+      numReviews: totalReviews,
+      averageRating: averageRating.toFixed(2), // Round to 2 decimal places
+    });
+  } else {
+    // Reset if no reviews are present
+    await this.findByIdAndUpdate(productId, {
+      numReviews: 0,
+      averageRating: 0,
+    });
+  }
+};
 
 const productModel = mongoose.model("product", ProductSchema);
 export default productModel;
