@@ -2,6 +2,7 @@ import { productCate, productModel } from "../models/models.js";
 import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 import { uploadSingleToCloudinary } from "../middleware/uploadImage.js";
+import mongoose from "mongoose";
 
 async function createProductCata(req, res, next) {
   const { name } = req.body;
@@ -36,6 +37,20 @@ async function getAllCategory(req, res, next) {
   }
   return successResponse(res, 200, "Successfull", categories);
 }
+// async function getProductsOfCategory(req, res, next) {
+//   let { id } = req.params;
+
+//   let products=await productModel.aggregate([
+//     {$lookup:{
+//       category:new mongoose.Types.ObjectId(id)
+//     },
+//     {
+
+//     }
+
+//   }
+//   ])
+// }
 async function getProductCata(req, res, next) {
   const { id } = req.params;
 

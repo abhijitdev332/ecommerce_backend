@@ -8,7 +8,9 @@ import {
   deleteReview,
   getProduct,
   getProductByGender,
+  getProductOrderDetails,
   getProductsByCategory,
+  getProductsBySubCategory,
   getTopSellingProducts,
   newArrivalsProducts,
   updateProduct,
@@ -18,6 +20,8 @@ router.post("/create", asyncWrapper(createProduct));
 router.get("/top", asyncWrapper(getTopSellingProducts));
 router.get("/arival", asyncWrapper(newArrivalsProducts));
 router.get("/category", asyncWrapper(getProductsByCategory));
+router.get("/subCategory", asyncWrapper(getProductsBySubCategory));
+router.get("/orders", asyncWrapper(getProductOrderDetails));
 router.get("/", asyncWrapper(getProductByGender));
 router.get("/:id", asyncWrapper(getProduct));
 router.post("/review/add/:id", asyncWrapper(addReview));

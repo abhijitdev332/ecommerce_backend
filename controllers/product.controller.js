@@ -1,6 +1,7 @@
 import { orderModel, productModel, variantModel } from "../models/models.js";
 import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
+import mongoose from "mongoose";
 async function createProduct(req, res, next) {
   const newProduct = new productModel({ ...req.body });
   let savedProduct = await newProduct.save();
@@ -149,6 +150,7 @@ const getTopSellingProducts = async (req, res, next) => {
         $group: {
           _id: "$productDetails._id", // Group by productId
           name: { $first: "$productDetails.name" }, // Get product name
+          description: { $first: "$productDetails.description" },
           averageRating: { $first: "$productDetails.averageRating" }, // Get product name
           sku: { $first: "$productDetails.sku" }, // Get product SKU
           totalProductSales: { $sum: "$totalSold" }, // Total sales for the product
@@ -194,6 +196,7 @@ const getTopSellingProducts = async (req, res, next) => {
           name: 1,
           sku: 1,
           averageRating: 1,
+          description: 1,
           totalProductSales: 1,
           totalVariants: 1,
           firstVariant: { $arrayElemAt: ["$variants", 0] }, // Ensure the first variant is included
@@ -258,6 +261,7 @@ const newArrivalsProducts = async (req, res, next) => {
         price: 1,
         imgurl: 1,
         averageRating: 1,
+        description: 1,
         category: 1,
         createdAt: 1,
         totalVariants: 1,
@@ -314,6 +318,7 @@ async function getProductsByCategory(req, res, next) {
     // Step 4: Add fields for total variants and first variant details
     {
       $addFields: {
+        totalStock: { $sum: "$variants.stock" },
         totalVariants: { $size: "$variants" }, // Count the total variants
         firstVariant: { $arrayElemAt: ["$variants", 0] }, // Get the first variant
         firstVariantImages: { $arrayElemAt: ["$variants.images", 0] }, // Get the first variant images
@@ -352,6 +357,210 @@ async function getProductsByCategory(req, res, next) {
 
   return successResponse(res, 200, "successfull", productsByCategory);
 }
+async function getProductsBySubCategory(req, res, next) {
+  const { query = "shirt" } = req.query;
+
+  const productsByCategory = await productModel.aggregate([
+    // Step 1: Lookup to join categories
+    {
+      $lookup: {
+        from: "subcategories", // Name of the categories collection
+        localField: "subCategory", // Field in products referencing category ID
+        foreignField: "_id", // Field in categories being referenced
+        as: "category", // Alias for the joined data
+      },
+    },
+    // Step 2: Match products by category name
+    {
+      $match: {
+        "category.SubCategoryName": query, // Replace with the desired category name
+      },
+    },
+    // Step 3: Lookup to join variants
+    {
+      $lookup: {
+        from: "variants", // Name of the variants collection
+        localField: "_id", // Field in products referencing the product ID
+        foreignField: "productId", // Field in variants referencing the product ID
+        as: "variants", // Alias for the joined data
+      },
+    },
+    // Step 4: Add fields for total variants and first variant details
+    {
+      $addFields: {
+        totalStock: { $sum: "$variants.stock" },
+        totalVariants: { $size: "$variants" }, // Count the total variants
+        firstVariant: { $arrayElemAt: ["$variants", 0] }, // Get the first variant
+        firstVariantImages: { $arrayElemAt: ["$variants.images", 0] }, // Get the first variant images
+        firstVariantSellPrice: { $arrayElemAt: ["$variants.sellPrice", 0] }, // Get the first variant sellprice
+        firstVariantDiscount: { $arrayElemAt: ["$variants.discount", 0] },
+      },
+    },
+    // Step 5: Project fields to include only relevant data
+    {
+      $project: {
+        name: 1, // Product name
+        price: 1, // Product price
+        sku: 1, // SKU
+        imgurl: 1, // Product image
+        averageRating: 1,
+        totalStock: 1, // Optional stock field
+        createdAt: 1, // Creation date
+        category: { $arrayElemAt: ["$category.SubCategoryName", 0] }, // Category name from lookup
+        totalVariants: 1, // Total variants count
+        firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantDiscount: 1,
+        "firstVariant.color": 1, // First variant color
+        "firstVariant.size": 1, // First variant size
+        "firstVariant.sellPrice": 1, // First variant price
+        "firstVariant.stock": 1, // First variant stock
+        "firstVariant.images": 1, // First variant image
+        "firstVariant.discount": 1, // First variant discount
+      },
+    },
+  ]);
+
+  if (!productsByCategory) {
+    return errorResponse(res, 400, "can't find products by this category");
+  }
+
+  return successResponse(res, 200, "successfull", productsByCategory);
+}
+
+async function getProductOrderDetails(req, res, next) {
+  let { productId = "", color = "" } = req.query;
+
+  const productOrders = await orderModel.aggregate([
+    // Step 1: Unwind products array to process each entry separately
+    { $unwind: "$products" },
+
+    // Step 2: Match orders that contain the given productId
+    {
+      $match: {
+        "products.productId": new mongoose.Types.ObjectId(productId),
+      },
+    },
+
+    // Step 3: Lookup variant details (fetching only those with the given color)
+    {
+      $lookup: {
+        from: "variants",
+        localField: "products.variantId",
+        foreignField: "_id",
+        as: "variantDetails",
+      },
+    },
+
+    // Step 4: Filter out variants that do not match the given color
+    {
+      $match: {
+        "variantDetails.color": color, // Match only color, ignore size
+      },
+    },
+
+    // Step 5: Lookup product details
+    {
+      $lookup: {
+        from: "products",
+        localField: "products.productId",
+        foreignField: "_id",
+        as: "productDetails",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "userDetails",
+      },
+    },
+
+    // Step 6: Group back orders with their respective products
+    {
+      $group: {
+        _id: "$_id",
+        userDetails: { $first: { $arrayElemAt: ["$userDetails", 0] } }, // Single user
+        totalAmount: { $first: "$totalAmount" },
+        discount: { $first: "$discount" },
+        transactionId: { $first: "$transactionId" },
+        paymentGateway: { $first: "$paymentGateway" },
+        address: { $first: "$address" },
+        status: { $first: "$status" },
+        createdAt: { $first: "$createdAt" },
+        products: {
+          $push: {
+            productId: "$products.productId",
+            variantId: "$products.variantId",
+            quantity: "$products.quantity",
+            variantDetails: { $arrayElemAt: ["$variantDetails", 0] },
+            productDetails: { $arrayElemAt: ["$productDetails", 0] },
+          },
+        },
+      },
+    },
+
+    // Step 7: Project the final response structure
+    {
+      $project: {
+        _id: 1,
+        userDetails: {
+          _id: 1,
+          username: 1,
+          email: 1,
+        },
+        totalAmount: 1,
+        discount: 1,
+        transactionId: 1,
+        paymentGateway: 1,
+        address: 1,
+        status: 1,
+        createdAt: 1,
+        products: {
+          productId: 1,
+          variantId: 1,
+          quantity: 1,
+          variantDetails: {
+            _id: 1,
+            color: 1,
+            images: 1,
+            stock: 1,
+          },
+          productDetails: {
+            _id: 1,
+            name: 1,
+            sku: 1,
+            imgurl: 1,
+          },
+        },
+        firstProduct: {
+          productName: { $arrayElemAt: ["$products.productId.name", 0] }, // Get first product in the order
+          variantId: { $arrayElemAt: ["$products.variantId", 0] },
+          quantity: { $arrayElemAt: ["$products.quantity", 0] },
+          variantImages: {
+            $arrayElemAt: ["$products.variantDetails.images", 0],
+          },
+          productDetails: {
+            name: { $arrayElemAt: ["$products.productDetails.name", 0] },
+            sku: { $arrayElemAt: ["$products.productDetails.sku", 0] },
+            imgurl: { $arrayElemAt: ["$products.productDetails.imgurl", 0] },
+          },
+        },
+      },
+    },
+  ]);
+
+  if (!productOrders) {
+    return errorResponse(
+      res,
+      400,
+      "No orders found for this product and variant"
+    );
+  }
+
+  return successResponse(res, 200, "Successful", productOrders);
+}
 
 export {
   createProduct,
@@ -364,4 +573,6 @@ export {
   getProductByGender,
   newArrivalsProducts,
   getProductsByCategory,
+  getProductsBySubCategory,
+  getProductOrderDetails,
 };

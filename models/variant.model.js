@@ -16,6 +16,10 @@ const VariantSchema = new mongoose.Schema(
     basePrice: { type: Number },
     sellPrice: { type: Number, required: true },
     stock: { type: Number, default: 0 },
+    sold: {
+      type: Number,
+      default: 0, // Track the number of items sold for this specific variant
+    },
     discount: {
       type: String,
     },

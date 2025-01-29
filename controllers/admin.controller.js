@@ -368,6 +368,15 @@ const getAllOrders = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
 
   const orders = await orderModel.aggregate([
+    {
+      $limit: +limit,
+    },
+    {
+      $skip: +skip,
+    },
+    // {
+    //   $sort: "createdAt" - 1,
+    // },
     // Step 1: Lookup to fetch user details
     {
       $lookup: {
@@ -499,6 +508,91 @@ const getAllOrders = async (req, res, next) => {
   }
   return successResponse(res, 200, "success full", orders);
 };
+const getTopCategories = async (req, res, next) => {
+  const { limit = 5, skip = 0 } = req.query;
+  const topCategories = await productCate.aggregate([
+    // Step 1: Lookup products linked to each category
+    {
+      $lookup: {
+        from: "products", // Name of the product collection
+        localField: "_id", // _id in Category
+        foreignField: "category", // Category reference in Product
+        as: "products",
+      },
+    },
+
+    // Step 2: Unwind products to process them individually
+    {
+      $unwind: {
+        path: "$products",
+        preserveNullAndEmptyArrays: true, // Keep categories even if they have no products
+      },
+    },
+
+    // Step 3: Lookup variants for each product
+    {
+      $lookup: {
+        from: "variants", // Name of the variant collection
+        localField: "products._id", // Product ID
+        foreignField: "productId", // Variant reference to Product
+        as: "products.variants",
+      },
+    },
+
+    // Step 4: Unwind variants to calculate total sales per category
+    {
+      $unwind: {
+        path: "$products.variants",
+        preserveNullAndEmptyArrays: true, // Keep products even if they have no variants
+      },
+    },
+
+    // Step 5: Group by category to sum up total sold items
+    {
+      $group: {
+        _id: "$_id", // Group by category ID
+        categoryName: { $first: "$categoryName" }, // Get category name
+        categoryImage: { $first: "$categoryImage" }, // Get category image
+        totalSold: { $sum: "$products.variants.sold" }, // Sum of all sold items in this category
+        createdAt: { $first: "$createdAt" },
+      },
+    },
+
+    // Step 6: Sort by totalSold in descending order (highest sales first)
+    {
+      $sort: { totalSold: -1 },
+    },
+
+    // Step 7: Optionally limit to top N categories (e.g., Top 5)
+    {
+      $limit: +limit, // Change this number to get more or fewer categories
+    },
+    {
+      $skip: +skip,
+    },
+
+    // Step 8: Final projection
+    {
+      $project: {
+        _id: 1,
+        categoryName: 1,
+        categoryImage: 1,
+        totalSold: 1,
+        createdAt: 1,
+      },
+    },
+  ]);
+  if (!topCategories) {
+    return errorResponse(res, 400, "failed to get top categories");
+  }
+
+  return successResponse(
+    res,
+    200,
+    "Top categories by product sales",
+    topCategories
+  );
+};
 
 export {
   getAllProduct,
@@ -507,4 +601,5 @@ export {
   getAllCategories,
   getAllOrders,
   getOrdersDetails,
+  getTopCategories,
 };

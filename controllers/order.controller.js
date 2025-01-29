@@ -27,7 +27,8 @@ async function createOrder(req, res, next) {
       // Find the variant and reduce the stock
       const variant = await variantModel.findOneAndUpdate(
         { _id: variantId, productId: productId },
-        { $inc: { stock: -quantity } }, // Reduce stock by the quantity ordered
+        { $inc: { stock: -quantity, sold: quantity } }, // Reduce stock by the quantity ordered
+
         { new: true, session } // Use session for transaction
       );
 
