@@ -31,7 +31,12 @@ async function createProductCata(req, res, next) {
   return successResponse(res, 201, "Category Created Successfully", savedCata);
 }
 async function getAllCategory(req, res, next) {
-  const categories = await productCate.find({});
+  const { limit = 5, skip = 0 } = req.query;
+  const categories = await productCate
+    .find({})
+    .limit(+limit)
+    .skip(+skip)
+    .sort({ createdAt: -1 });
   if (!categories) {
     return next(new ServerError("failed to get categories", 500));
   }

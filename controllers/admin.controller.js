@@ -618,6 +618,101 @@ const getTopCategories = async (req, res, next) => {
   );
 };
 
+const getAdminStats = async (req, res, next) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of the day
+
+  const stats = await orderModel.aggregate([
+    {
+      $facet: {
+        // 1️⃣ Total Product Sale Amount & Today's Sale Amount
+        totalSaleAmount: [
+          {
+            $group: {
+              _id: null,
+              totalSales: { $sum: "$totalAmount" }, // Sum of all sales
+            },
+          },
+        ],
+        todaySaleAmount: [
+          {
+            $match: {
+              createdAt: { $gte: today }, // Filter orders created today
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              todaySales: { $sum: "$totalAmount" }, // Sum of today's sales
+            },
+          },
+        ],
+
+        // 2️⃣ Total Orders & Today's Orders
+        totalOrders: [
+          {
+            $group: {
+              _id: null,
+              totalOrders: { $sum: 1 }, // Count of total orders
+            },
+          },
+        ],
+        todayOrders: [
+          {
+            $match: {
+              createdAt: { $gte: today }, // Filter orders created today
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              todayOrders: { $sum: 1 }, // Count of today's orders
+            },
+          },
+        ],
+
+        // 3️⃣ Total Customers & Today's Joined Customers
+        totalCustomers: [
+          {
+            $group: {
+              _id: null,
+              totalCustomers: { $sum: 1 }, // Count of all customers
+            },
+          },
+        ],
+        todayCustomers: [
+          {
+            $match: {
+              createdAt: { $gte: today }, // Filter customers who joined today
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              todayCustomers: { $sum: 1 }, // Count of today's new customers
+            },
+          },
+        ],
+      },
+    },
+
+    // Step: Formatting the output
+    {
+      $project: {
+        totalSaleAmount: { $arrayElemAt: ["$totalSaleAmount.totalSales", 0] },
+        todaySaleAmount: { $arrayElemAt: ["$todaySaleAmount.todaySales", 0] },
+        totalOrders: { $arrayElemAt: ["$totalOrders.totalOrders", 0] },
+        todayOrders: { $arrayElemAt: ["$todayOrders.todayOrders", 0] },
+        totalCustomers: { $arrayElemAt: ["$totalCustomers.totalCustomers", 0] },
+        todayCustomers: { $arrayElemAt: ["$todayCustomers.todayCustomers", 0] },
+      },
+    },
+  ]);
+
+  // Send response
+  return successResponse(res, 200, "Fetched dashboard stats", stats[0]);
+};
+
 export {
   getAllProduct,
   getProductWithVariants,
@@ -626,4 +721,5 @@ export {
   getAllOrders,
   getOrdersDetails,
   getTopCategories,
+  getAdminStats,
 };

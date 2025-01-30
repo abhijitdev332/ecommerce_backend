@@ -17,6 +17,89 @@ async function createProduct(req, res, next) {
     savedProduct
   );
 }
+async function getAllProducts(req, res, next) {
+  const { limit = 5, skip = 0 } = req.query;
+  // Step 1: Get the total count of products
+  const totalCount = await productModel.countDocuments();
+
+  const productsWithStats = await productModel.aggregate([
+    // Step 1: Sort by createdAt (latest products first)
+    { $sort: { createdAt: -1 } },
+
+    // Step 2: Pagination (skip and limit)
+    { $skip: +skip },
+    { $limit: +limit },
+
+    // Step 3: Lookup to get variants for each product
+    {
+      $lookup: {
+        from: "variants", // Variant collection
+        localField: "_id", // Product _id
+        foreignField: "productId", // productId in Variant
+        as: "variants",
+      },
+    },
+
+    // Step 4: Lookup to get category details
+    {
+      $lookup: {
+        from: "categories", // Category collection
+        localField: "category", // Category IDs in Product
+        foreignField: "_id", // _id in Category
+        as: "categoryDetails",
+      },
+    },
+
+    // Step 5: Add calculated fields
+    {
+      $addFields: {
+        totalStock: { $sum: "$variants.stock" }, // Total stock across all variants
+        firstVariantImages: {
+          $arrayElemAt: ["$variants.images", 0], // Get first variant's images
+        },
+        firstVariantSellPrice: {
+          $arrayElemAt: ["$variants.sellPrice", 0], // Get first variant's sell price
+        },
+        firstVariantBasePrice: {
+          $arrayElemAt: ["$variants.basePrice", 0], // Get first variant's base price
+        },
+        firstVariantDiscount: {
+          $arrayElemAt: ["$variants.discount", 0], // Get first variant's discount
+        },
+        totalVariants: { $size: "$variants" }, // Count of total variants
+      },
+    },
+
+    // Step 6: Project only the required fields
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        sku: 1,
+        description: 1,
+        createdAt: 1,
+        averageRating: 1,
+        categoryDetails: {
+          _id: 1,
+          categoryName: 1, // Include category name
+        },
+        totalStock: 1,
+        totalVariants: 1,
+        firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantBasePrice: 1,
+        firstVariantDiscount: 1,
+      },
+    },
+  ]);
+  if (!productsWithStats) {
+    return errorResponse(res, 400, "Failed to get all Products");
+  }
+  return successResponse(res, 200, "Fetched all products", {
+    products: productsWithStats,
+    totalLength: totalCount,
+  });
+}
 async function getProduct(req, res, next) {
   const { id } = req.params;
 
@@ -280,10 +363,78 @@ const newArrivalsProducts = async (req, res, next) => {
   return successResponse(res, 200, "Successfull", newArrivals);
 };
 const getProductByGender = async (req, res, next) => {
-  const { gender = "male" } = req.query;
-  const genderproducts = await productModel.find({ genderFor: gender });
-  if (genderproducts?.length > 0) {
-    return successResponse(res, 200, "successfull", genderproducts);
+  const { gender = "male", limit = 10, skip = 0 } = req.query;
+
+  const genderProducts = await productModel.aggregate([
+    // Step 1: Filter by gender
+    {
+      $match: {
+        genderFor: gender, // Filters products based on gender
+      },
+    },
+
+    // Step 2: Sort by createdAt (latest products first)
+    { $sort: { createdAt: -1 } },
+
+    // Step 3: Pagination (skip and limit)
+    { $skip: +skip },
+    { $limit: +limit },
+
+    // Step 4: Lookup to get variants for each product
+    {
+      $lookup: {
+        from: "variants", // Name of the Variant collection
+        localField: "_id", // Product _id
+        foreignField: "productId", // productId in Variant
+        as: "variants",
+      },
+    },
+
+    // Step 5: Add calculated fields
+    {
+      $addFields: {
+        totalVariants: { $size: "$variants" }, // Count of all variants
+        totalStock: { $sum: "$variants.stock" }, // Total stock across all variants
+
+        firstVariantImages: {
+          $arrayElemAt: ["$variants.images", 0], // First variant's images
+        },
+        firstVariantSellPrice: {
+          $arrayElemAt: ["$variants.sellPrice", 0], // First variant's sell price
+        },
+        firstVariantBasePrice: {
+          $arrayElemAt: ["$variants.basePrice", 0], // First variant's base price
+        },
+        firstVariantDiscount: {
+          $arrayElemAt: ["$variants.discount", 0], // First variant's discount
+        },
+      },
+    },
+
+    // Step 6: Project required fields
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        sku: 1,
+        price: 1,
+        imgurl: 1,
+        averageRating: 1,
+        description: 1,
+        category: 1,
+        createdAt: 1,
+        totalVariants: 1,
+        totalStock: 1,
+        firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantBasePrice: 1,
+        firstVariantDiscount: 1,
+      },
+    },
+  ]);
+
+  if (genderProducts?.length > 0) {
+    return successResponse(res, 200, "successfull", genderProducts);
   }
 
   return errorResponse(res, 400, "failed to get by for this category");
@@ -575,4 +726,5 @@ export {
   getProductsByCategory,
   getProductsBySubCategory,
   getProductOrderDetails,
+  getAllProducts,
 };
