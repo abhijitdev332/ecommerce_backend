@@ -13,7 +13,11 @@ const router = express.Router();
 router.post("/create", uploader.single("image"), asyncWrapper(createCategory));
 router.get("/", asyncWrapper(getAllSubCategory));
 router.get("/:id", asyncWrapper(getCategory));
-router.put("/update/:id", asyncWrapper(updateCategory));
+router.put(
+  "/update/:id",
+  uploader.single("image"),
+  asyncWrapper(updateCategory)
+);
 router.delete("/remove/:id", asyncWrapper(deleteCategory));
 
 export default router;

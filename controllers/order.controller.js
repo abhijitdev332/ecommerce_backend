@@ -97,22 +97,21 @@ async function getUserOrders(req, res, next) {
 }
 async function updateOrder(req, res, next) {
   const { id } = req.params;
-  const { products, totalAmount, discount, transactionId, paymentGateway } =
-    req.body;
+  const { status } = req.body;
 
-  const updatedOrder = await variantModel.findByIdAndUpdate(
+  const updatedOrder = await orderModel.findByIdAndUpdate(
     id,
-    { ...req.body },
+    { status: status },
     {
       runValidators: true,
     }
   );
   if (!updatedOrder) {
-    let serverErr = new DatabaseError("Failed to update user!!");
+    let serverErr = new DatabaseError("Failed to update order status!!");
     return next(serverErr);
   }
 
-  return successResponse(res, 200, "Product Variant updated successfully");
+  return successResponse(res, 200, "Order status updated successfully");
 }
 async function deleteOrder(req, res, next) {
   const { id } = req.params;

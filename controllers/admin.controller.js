@@ -1,6 +1,5 @@
 import {
   productModel,
-  cartModel,
   userModel,
   productCate,
   orderModel,
@@ -8,7 +7,12 @@ import {
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 const getAllProduct = async (req, res, next) => {
+  const { limit = 5, skip = 0 } = req.query;
   const productsWithStats = await productModel.aggregate([
+    { $limit: +limit },
+    {
+      $skip: +skip,
+    },
     // Step 1: Lookup to get variants for each product
     {
       $lookup: {
@@ -61,6 +65,9 @@ const getAllProduct = async (req, res, next) => {
       },
     },
   ]);
+  if (!productsWithStats) {
+    return errorResponse(res, 400, "failed to get products");
+  }
 
   return successResponse(res, 200, "all products stats", productsWithStats);
 };
@@ -145,7 +152,9 @@ const getProductWithVariants = async (req, res, next) => {
       },
     },
   ]);
-
+  if (!productWithStats) {
+    return errorResponse(res, 400, "Failed to get products variants");
+  }
   return successResponse(
     res,
     200,
@@ -154,15 +163,22 @@ const getProductWithVariants = async (req, res, next) => {
   );
 };
 const getAllUsers = async (req, res, next) => {
-  const allUsers = await userModel.find({}, { password: 0 });
+  const { limit = 5, skip = 0 } = req.query;
+  const allUsers = await userModel
+    .find({}, { password: 0 })
+    .limit(+limit)
+    .skip(+skip);
 
   if (!allUsers) {
-    return errorResponse(res, 500, "failed to get all users");
+    return errorResponse(res, 400, "failed to get all users");
   }
   return successResponse(res, 200, "succeesfull", allUsers);
 };
 const getAllCategories = async (req, res, next) => {
+  const { limit = 5, skip = 0 } = req.query;
   const categoryStats = await productCate.aggregate([
+    { $limit: +limit },
+    { $skip: +skip },
     // Step 1: Lookup products linked to each category
     {
       $lookup: {
@@ -362,7 +378,7 @@ const getOrdersDetails = async (req, res, next) => {
   if (!orderDetails) {
     return errorResponse(res, 500, "failed to get all orders");
   }
-  return successResponse(res, 200, "succesfull", orderDetails);
+  return successResponse(res, 200, "Succesfull", orderDetails);
 };
 const getAllOrders = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
@@ -374,9 +390,11 @@ const getAllOrders = async (req, res, next) => {
     {
       $skip: +skip,
     },
-    // {
-    //   $sort: "createdAt" - 1,
-    // },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
     // Step 1: Lookup to fetch user details
     {
       $lookup: {
@@ -511,6 +529,12 @@ const getAllOrders = async (req, res, next) => {
 const getTopCategories = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
   const topCategories = await productCate.aggregate([
+    {
+      $limit: +limit,
+    },
+    {
+      $skip: +skip,
+    },
     // Step 1: Lookup products linked to each category
     {
       $lookup: {

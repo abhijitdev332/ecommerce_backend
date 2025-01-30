@@ -52,11 +52,31 @@ async function getCategory(req, res, next) {
 }
 async function updateCategory(req, res, next) {
   const { id } = req.params;
-  const { SubCategoryName, subCategoryImage = "" } = req.body;
+  const { name } = req.body;
+
+  const fileBuffer = req?.file?.buffer; // File buffer from Multer
+  const folder = "subcategory"; // Cloudinary folder name
+  let categoryImage;
+  if (fileBuffer) {
+    categoryImage = await uploadSingleToCloudinary(fileBuffer, folder);
+    const updatedCata = await subCategoryModel.findByIdAndUpdate(
+      id,
+      { SubCategoryName: name, subCategoryImage: categoryImage?.url },
+      {
+        runValidators: true,
+      }
+    );
+    return successResponse(
+      res,
+      200,
+      "category update successfull",
+      updatedCata
+    );
+  }
 
   const updatedCata = await subCategoryModel.findByIdAndUpdate(
     id,
-    { SubCategoryName, subCategoryImage },
+    { SubCategoryName: name },
     {
       runValidators: true,
     }
@@ -70,6 +90,10 @@ async function updateCategory(req, res, next) {
 async function deleteCategory(req, res, next) {
   const { id } = req.params;
   const productDel = await productModel.deleteMany({ subCategory: id });
+  if (!productDel) {
+    let serverErr = new DatabaseError("failed to delete user!!");
+    return next(serverErr);
+  }
   const deletedCata = await subCategoryModel.findByIdAndDelete(id);
   if (!deletedCata) {
     let serverErr = new DatabaseError("failed to delete user!!");

@@ -19,7 +19,11 @@ router.post(
 router.get("/", asyncWrapper(getAllCategory));
 // router.get("/products/:id", asyncWrapper(getProductsOfCategory));
 router.get("/:id", asyncWrapper(getProductCata));
-router.put("/update/:id", asyncWrapper(updateProductCata));
+router.put(
+  "/update/:id",
+  uploader.single("image"),
+  asyncWrapper(updateProductCata)
+);
 router.delete("/remove/:id", asyncWrapper(deleteProductCata));
 
 export default router;

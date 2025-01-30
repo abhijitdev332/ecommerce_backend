@@ -63,11 +63,31 @@ async function getProductCata(req, res, next) {
 }
 async function updateProductCata(req, res, next) {
   const { id } = req.params;
-  const { categoryName, categoryImage = "" } = req.body;
+  const { name } = req.body;
+  const fileBuffer = req?.file?.buffer; // File buffer from Multer
+  const folder = "category"; // Cloudinary folder name
+
+  let categoryImage;
+  if (fileBuffer) {
+    categoryImage = await uploadSingleToCloudinary(fileBuffer, folder);
+    const updatedCata = await productCate.findByIdAndUpdate(
+      id,
+      { categoryName: name, categoryImage: categoryImage?.url },
+      {
+        runValidators: true,
+      }
+    );
+    return successResponse(
+      res,
+      200,
+      "category update successfull",
+      updatedCata
+    );
+  }
 
   const updatedCata = await productCate.findByIdAndUpdate(
     id,
-    { categoryName, categoryImage },
+    { categoryName: name },
     {
       runValidators: true,
     }
