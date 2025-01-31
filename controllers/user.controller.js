@@ -6,8 +6,8 @@ import { uploadSingleToCloudinary } from "../middleware/uploadImage.js";
 async function createUser(req, res, next) {
   // const { name, email, password, phone, role } = req.body;
   const { data } = req.body;
-  let { displayName, email, password, phoneNumber, role } = JSON.parse(data);
 
+  let { displayName, email, password, phoneNumber, role } = JSON.parse(data);
   // const haveUser = await userModel.find({
   //   $or: [{ email: email }, { phoneNumber: phoneNumber }],
   // });
@@ -28,7 +28,7 @@ async function createUser(req, res, next) {
     email,
     password: encryptPass,
     phoneNumber: phoneNumber,
-    roles: [role?.toUpperCase()],
+    roles: [role?.toUpperCase()] || null,
     imgUrl: userImageUrl?.url || "",
   });
   let savedUser = await user.save();

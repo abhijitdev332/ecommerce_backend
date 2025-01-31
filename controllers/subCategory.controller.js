@@ -36,9 +36,9 @@ async function getAllSubCategory(req, res, next) {
   const { limit = 5, skip = 0 } = req.query;
   const subCategories = await subCategoryModel
     .find({})
-    .limit(+limit)
+    .sort({ createdAt: -1 })
     .skip(+skip)
-    .sort({ createdAt: -1 });
+    .limit(+limit);
 
   if (!subCategories) {
     return next(new ServerError("Failed to get all Suv categories", 500));

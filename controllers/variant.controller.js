@@ -112,9 +112,12 @@ async function imageUpload(req, res, next) {
   }
 }
 async function getProductsByColor(req, res, next) {
-  let { color = "" } = req.query;
+  let { color = "", limit = 5, skip = 0 } = req.query;
 
   const result = await variantModel.aggregate([
+    { $sort: { createdAt: -1 } },
+    { $skip: +skip },
+    { $limit: +limit },
     // Step 1: Match variants by the given colors
     {
       $match: {

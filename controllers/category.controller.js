@@ -34,9 +34,10 @@ async function getAllCategory(req, res, next) {
   const { limit = 5, skip = 0 } = req.query;
   const categories = await productCate
     .find({})
-    .limit(+limit)
+    .sort({ createdAt: -1 })
     .skip(+skip)
-    .sort({ createdAt: -1 });
+    .limit(+limit);
+
   if (!categories) {
     return next(new ServerError("failed to get categories", 500));
   }

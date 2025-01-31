@@ -440,8 +440,12 @@ const getProductByGender = async (req, res, next) => {
   return errorResponse(res, 400, "failed to get by for this category");
 };
 async function getProductsByCategory(req, res, next) {
-  const { query = "casual" } = req.query;
+  const { query = "casual", limit = 5, skip = 0 } = req.query;
   const productsByCategory = await productModel.aggregate([
+    { $sort: { createdAt: -1 } },
+    { $skip: +skip },
+    { $limit: +limit },
+
     // Step 1: Lookup to join categories
     {
       $lookup: {
@@ -484,6 +488,7 @@ async function getProductsByCategory(req, res, next) {
         price: 1, // Product price
         sku: 1, // SKU
         imgurl: 1, // Product image
+        description: 1,
         averageRating: 1,
         totalStock: 1, // Optional stock field
         createdAt: 1, // Creation date
@@ -509,9 +514,12 @@ async function getProductsByCategory(req, res, next) {
   return successResponse(res, 200, "successfull", productsByCategory);
 }
 async function getProductsBySubCategory(req, res, next) {
-  const { query = "shirt" } = req.query;
+  const { query = "shirt", limit = 5, skip = 0 } = req.query;
 
   const productsByCategory = await productModel.aggregate([
+    { $sort: { createdAt: -1 } },
+    { $skip: +skip },
+    { $limit: +limit },
     // Step 1: Lookup to join categories
     {
       $lookup: {
@@ -713,6 +721,83 @@ async function getProductOrderDetails(req, res, next) {
   return successResponse(res, 200, "Successful", productOrders);
 }
 
+const getRelatedProducts = async (req, res, next) => {
+  const { id } = req.params;
+  const { limit = 5, skip = 0 } = req.query;
+  let relativeProducts = await productModel.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(id) }, // Match the given product ID
+    },
+    {
+      $lookup: {
+        from: "products", // Self-lookup on the products collection
+        localField: "category", // Match category field
+        foreignField: "category",
+        as: "relatedProducts",
+      },
+    },
+    {
+      $unwind: "$relatedProducts",
+    },
+    {
+      $match: {
+        "relatedProducts._id": { $ne: new mongoose.Types.ObjectId(id) }, // Exclude current product
+      },
+    },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "relatedProducts._id",
+        foreignField: "productId",
+        as: "relatedProducts.variants",
+      },
+    },
+    {
+      $addFields: {
+        "relatedProducts.totalVariants": { $size: "$relatedProducts.variants" },
+        "relatedProducts.totalProductSales": {
+          $sum: "$relatedProducts.variants.sold",
+        },
+        "relatedProducts.firstVariant": {
+          $arrayElemAt: ["$relatedProducts.variants", 0],
+        },
+        "relatedProducts.firstVariantImages": {
+          $arrayElemAt: ["$relatedProducts.variants.images", 0],
+        },
+        "relatedProducts.firstVariantSellPrice": {
+          $arrayElemAt: ["$relatedProducts.variants.sellPrice", 0],
+        },
+        "relatedProducts.firstVariantDiscount": {
+          $arrayElemAt: ["$relatedProducts.variants.discount", 0],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: "$relatedProducts._id",
+        name: "$relatedProducts.name",
+        sku: "$relatedProducts.sku",
+        averageRating: "$relatedProducts.averageRating",
+        description: "$relatedProducts.description",
+        totalProductSales: "$relatedProducts.totalProductSales",
+        totalVariants: "$relatedProducts.totalVariants",
+        firstVariant: "$relatedProducts.firstVariant",
+        firstVariantImages: "$relatedProducts.firstVariantImages",
+        firstVariantSellPrice: "$relatedProducts.firstVariantSellPrice",
+        firstVariantDiscount: "$relatedProducts.firstVariantDiscount",
+      },
+    },
+    { $limit: +limit }, // Limit the number of related products
+    {
+      $skip: +skip,
+    },
+  ]);
+  if (!relativeProducts) {
+    return errorResponse(res, 400, "failed to get relative products");
+  }
+  return successResponse(res, 200, "successfull", relativeProducts);
+};
+
 export {
   createProduct,
   getProduct,
@@ -727,4 +812,5 @@ export {
   getProductsBySubCategory,
   getProductOrderDetails,
   getAllProducts,
+  getRelatedProducts,
 };

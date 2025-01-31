@@ -34,28 +34,28 @@ const login = async (req, res, next) => {
     delete resUser?.password;
     // assign cookie
     const accessToken = generateAccessToken(resUser?._id);
-    const refreshToken = generateRefreshToken(resUser?._id);
+    // const refreshToken = generateRefreshToken(resUser?._id);
     // save refreshtoken in database
-    let savedToken = new tokenModel({
-      token: refreshToken,
-      userId: resUser?._id,
-      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    });
-    await savedToken.save();
+    // let savedToken = new tokenModel({
+    //   token: refreshToken,
+    //   userId: resUser?._id,
+    //   expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    // });
+    // await savedToken.save();
 
     // setcookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV == "production",
       sameSite: process.env.NODE_ENV == "production" ? "none" : "",
-      maxAge: 15 * 60 * 1000,
+      // maxAge: 15 * 60 * 1000,
     });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV == "production",
-      sameSite: process.env.NODE_ENV == "production" ? "none" : "",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // res.cookie("refreshToken", refreshToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV == "production",
+    //   sameSite: process.env.NODE_ENV == "production" ? "none" : "",
+    //   maxAge: 7 * 24 * 60 * 60 * 1000,
+    // });
     return successResponse(res, 200, "Login Successfull", resUser);
     // res.status(200).json({ msg: "Login Successfull", data: resUser });
   } catch (err) {

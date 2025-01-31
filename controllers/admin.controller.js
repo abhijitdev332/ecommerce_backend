@@ -8,7 +8,10 @@ import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 const getAllProduct = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
-  const productsWithStats = await productModel.aggregate([
+
+  let totalProductsLen = await productModel.countDocuments();
+  const allProducts = await productModel.aggregate([
+    { $sort: { createdAt: -1 } },
     { $limit: +limit },
     {
       $skip: +skip,
@@ -65,11 +68,14 @@ const getAllProduct = async (req, res, next) => {
       },
     },
   ]);
-  if (!productsWithStats) {
+  if (!allProducts) {
     return errorResponse(res, 400, "failed to get products");
   }
 
-  return successResponse(res, 200, "all products stats", productsWithStats);
+  return successResponse(res, 200, "all products stats", {
+    allProducts,
+    totalProductsLen,
+  });
 };
 const getProductWithVariants = async (req, res, next) => {
   const { id } = req.params;
@@ -164,21 +170,25 @@ const getProductWithVariants = async (req, res, next) => {
 };
 const getAllUsers = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
+  const totalUsers = await userModel.countDocuments();
   const allUsers = await userModel
     .find({}, { password: 0 })
+    .sort({ createdAt: -1 })
     .limit(+limit)
     .skip(+skip);
 
   if (!allUsers) {
     return errorResponse(res, 400, "failed to get all users");
   }
-  return successResponse(res, 200, "succeesfull", allUsers);
+  return successResponse(res, 200, "succeesfull", { allUsers, totalUsers });
 };
 const getAllCategories = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
   const categoryStats = await productCate.aggregate([
+    { $sort: { createdAt: -1 } },
     { $limit: +limit },
     { $skip: +skip },
+
     // Step 1: Lookup products linked to each category
     {
       $lookup: {
@@ -382,18 +392,14 @@ const getOrdersDetails = async (req, res, next) => {
 };
 const getAllOrders = async (req, res, next) => {
   const { limit = 5, skip = 0 } = req.query;
-
+  const totalOrderLength = await orderModel.countDocuments();
   const orders = await orderModel.aggregate([
+    { $sort: { createdAt: -1 } },
     {
       $limit: +limit,
     },
     {
       $skip: +skip,
-    },
-    {
-      $sort: {
-        createdAt: -1,
-      },
     },
     // Step 1: Lookup to fetch user details
     {
@@ -524,17 +530,22 @@ const getAllOrders = async (req, res, next) => {
   if (!orders) {
     return errorResponse(res, 500, "Failed to get all orders");
   }
-  return successResponse(res, 200, "success full", orders);
+  return successResponse(res, 200, "success full", {
+    orders,
+    totalOrders: totalOrderLength,
+  });
 };
 const getTopCategories = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   const topCategories = await productCate.aggregate([
+    { $sort: { createdAt: -1 } },
     {
       $limit: +limit,
     },
     {
       $skip: +skip,
     },
+
     // Step 1: Lookup products linked to each category
     {
       $lookup: {
@@ -618,85 +629,51 @@ const getTopCategories = async (req, res, next) => {
   );
 };
 
+// stats
 const getAdminStats = async (req, res, next) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set to start of the day
 
-  const stats = await orderModel.aggregate([
+  const orderStats = await orderModel.aggregate([
     {
       $facet: {
-        // 1️⃣ Total Product Sale Amount & Today's Sale Amount
+        // 1️⃣ Total Sale Amount & Today's Sale Amount
         totalSaleAmount: [
-          {
-            $group: {
-              _id: null,
-              totalSales: { $sum: "$totalAmount" }, // Sum of all sales
-            },
-          },
+          { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } },
         ],
         todaySaleAmount: [
-          {
-            $match: {
-              createdAt: { $gte: today }, // Filter orders created today
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              todaySales: { $sum: "$totalAmount" }, // Sum of today's sales
-            },
-          },
+          { $match: { createdAt: { $gte: today } } },
+          { $group: { _id: null, todaySales: { $sum: "$totalAmount" } } },
         ],
 
         // 2️⃣ Total Orders & Today's Orders
-        totalOrders: [
-          {
-            $group: {
-              _id: null,
-              totalOrders: { $sum: 1 }, // Count of total orders
-            },
-          },
-        ],
+        totalOrders: [{ $group: { _id: null, totalOrders: { $sum: 1 } } }],
         todayOrders: [
-          {
-            $match: {
-              createdAt: { $gte: today }, // Filter orders created today
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              todayOrders: { $sum: 1 }, // Count of today's orders
-            },
-          },
+          { $match: { createdAt: { $gte: today } } },
+          { $group: { _id: null, todayOrders: { $sum: 1 } } },
         ],
 
-        // 3️⃣ Total Customers & Today's Joined Customers
+        // 3️⃣ Total Customers & Today's Customers
         totalCustomers: [
-          {
-            $group: {
-              _id: null,
-              totalCustomers: { $sum: 1 }, // Count of all customers
-            },
-          },
+          { $group: { _id: null, totalCustomers: { $sum: 1 } } },
         ],
         todayCustomers: [
-          {
-            $match: {
-              createdAt: { $gte: today }, // Filter customers who joined today
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              todayCustomers: { $sum: 1 }, // Count of today's new customers
-            },
-          },
+          { $match: { createdAt: { $gte: today } } },
+          { $group: { _id: null, todayCustomers: { $sum: 1 } } },
+        ],
+
+        // 4️⃣ Order Status Breakdown (All Time)
+        orderStatusArray: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
+
+        // 5️⃣ Order Status Breakdown (Today)
+        todayOrderStatusArray: [
+          { $match: { createdAt: { $gte: today } } },
+          { $group: { _id: "$status", count: { $sum: 1 } } },
         ],
       },
     },
 
-    // Step: Formatting the output
+    // Step: Convert Order Status Arrays into Object Format
     {
       $project: {
         totalSaleAmount: { $arrayElemAt: ["$totalSaleAmount.totalSales", 0] },
@@ -705,12 +682,109 @@ const getAdminStats = async (req, res, next) => {
         todayOrders: { $arrayElemAt: ["$todayOrders.todayOrders", 0] },
         totalCustomers: { $arrayElemAt: ["$totalCustomers.totalCustomers", 0] },
         todayCustomers: { $arrayElemAt: ["$todayCustomers.todayCustomers", 0] },
+
+        // Convert order status array to object using `$arrayToObject`
+        orderStatus: {
+          $arrayToObject: {
+            $map: {
+              input: "$orderStatusArray",
+              as: "status",
+              in: { k: "$$status._id", v: "$$status.count" },
+            },
+          },
+        },
+
+        todayOrderStatus: {
+          $arrayToObject: {
+            $map: {
+              input: "$todayOrderStatusArray",
+              as: "status",
+              in: { k: "$$status._id", v: "$$status.count" },
+            },
+          },
+        },
       },
     },
   ]);
 
   // Send response
-  return successResponse(res, 200, "Fetched dashboard stats", stats[0]);
+  return successResponse(res, 200, "Fetched dashboard stats", orderStats[0]);
+};
+const getAdminOrderStatus = async (req, res, next) => {
+  const { range = "1m" } = req.query; // Accepts "7d", "1m", "1y"
+
+  const getStartDate = () => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set time to midnight (12:00 AM)
+
+    if (range === "7d") {
+      now.setDate(now.getDate() - 6); // Last 7 days (including today)
+    } else if (range === "1m") {
+      now.setMonth(now.getMonth() - 1); // Last 1 month
+    } else if (range === "1y") {
+      now.setFullYear(now.getFullYear() - 1); // Last 1 year
+    }
+    return now;
+  };
+
+  const startDate = getStartDate();
+
+  const orderTrends = await orderModel.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate }, // Filter orders within selected range
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: range === "1y" ? "%m-%Y" : "%d-%m-%Y", // Group by month for 1 year, otherwise by day
+            date: "$createdAt",
+          },
+        },
+        totalSales: { $sum: "$totalAmount" }, // Sum of sales
+        totalOrders: { $sum: 1 }, // Count orders
+      },
+    },
+    { $sort: { _id: 1 } }, // Sort by date
+  ]);
+
+  return successResponse(res, 200, "Fetched order trends", orderTrends);
+};
+const getAdminOrdersByCountry = async (req, res, next) => {
+  const ordersByCountry = await orderModel.aggregate([
+    {
+      $lookup: {
+        from: "addresses", // Address collection
+        localField: "address", // Reference to address ID in order
+        foreignField: "_id", // Address _id in Address collection
+        as: "addressDetails",
+      },
+    },
+    {
+      $unwind: "$addressDetails", // Convert address array to object
+    },
+    {
+      $group: {
+        _id: "$addressDetails.country", // Group by country
+        totalOrders: { $sum: 1 }, // Count total orders
+        totalSales: { $sum: "$totalAmount" }, // Sum total sales
+      },
+    },
+    { $sort: { totalOrders: -1 } }, // Sort by most orders
+  ]);
+
+  if (!ordersByCountry) {
+    return errorResponse(res, 400, "failed to get orders by country");
+  }
+
+  return successResponse(
+    res,
+    200,
+    "Fetched orders by country",
+    ordersByCountry
+  );
 };
 
 export {
@@ -722,4 +796,6 @@ export {
   getOrdersDetails,
   getTopCategories,
   getAdminStats,
+  getAdminOrderStatus,
+  getAdminOrdersByCountry,
 };

@@ -12,6 +12,7 @@ import {
   getProductOrderDetails,
   getProductsByCategory,
   getProductsBySubCategory,
+  getRelatedProducts,
   getTopSellingProducts,
   newArrivalsProducts,
   updateProduct,
@@ -21,6 +22,7 @@ router.post("/create", asyncWrapper(createProduct));
 router.get("/top", asyncWrapper(getTopSellingProducts));
 router.get("/arival", asyncWrapper(newArrivalsProducts));
 router.get("/shop", asyncWrapper(getAllProducts));
+router.get("/relative/:id", asyncWrapper(getRelatedProducts));
 router.get("/category", asyncWrapper(getProductsByCategory));
 router.get("/subCategory", asyncWrapper(getProductsBySubCategory));
 router.get("/orders", asyncWrapper(getProductOrderDetails));
