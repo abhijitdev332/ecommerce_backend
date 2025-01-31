@@ -234,6 +234,7 @@ const getTopSellingProducts = async (req, res, next) => {
           _id: "$productDetails._id", // Group by productId
           name: { $first: "$productDetails.name" }, // Get product name
           description: { $first: "$productDetails.description" },
+          reviews: { $first: "$productDetails.reviews" },
           averageRating: { $first: "$productDetails.averageRating" }, // Get product name
           sku: { $first: "$productDetails.sku" }, // Get product SKU
           totalProductSales: { $sum: "$totalSold" }, // Total sales for the product
@@ -279,6 +280,7 @@ const getTopSellingProducts = async (req, res, next) => {
           name: 1,
           sku: 1,
           averageRating: 1,
+          reviews: 1,
           description: 1,
           totalProductSales: 1,
           totalVariants: 1,
