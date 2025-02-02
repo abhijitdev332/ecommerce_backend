@@ -46,7 +46,7 @@ app.use(cookie());
 // cloudinary image storage
 configureCloudinary();
 app.get("/", (req, res) => {
-  res.json("this is reponse from backend");
+ return res.json("this is reponse from backend");
 });
 app.use("/api/user", userRoutes);
 app.use("/api/address", addressRoutes);
@@ -60,7 +60,7 @@ app.use("/api/category", productCataRoutes);
 app.use("/api/subcategory", subCategoryRoutes);
 app.use("/api/payment", paymentRoutes);
 // unversal error route
-app.use("*", async (req, res, next) => {
+app.use("/*", async (req, res, next) => {
   let noRouteErr = new AppError("No route match with this path", 400);
   next(noRouteErr);
 });

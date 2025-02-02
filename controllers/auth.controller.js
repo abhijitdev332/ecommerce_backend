@@ -13,6 +13,43 @@ import {
   verifyRefreshToken,
 } from "../lib/createToken.js";
 import { dateFormat } from "../utils/utills.js";
+
+const verifySession = async (req, res, next) => {
+  const refreshToken = req.cookies.refreshToken || ""; // Get refresh token from cookies
+
+  if (!refreshToken)
+    return errorResponse(res, 403, "refresh Token is required");
+
+  const storedToken = await tokenModel.findOne({ token: refreshToken });
+  if (
+    !storedToken ||
+    dateFormat(storedToken.expireAt) < dateFormat(new Date())
+  ) {
+    return errorResponse(res, 403, "Invalid or expired refresh token.");
+  }
+
+  try {
+    const { userId } = verifyRefreshToken(refreshToken);
+    const user = await userModel.findById(userId, "-password");
+    // Generate a new access token
+    const newAccessToken = generateAccessToken(userId);
+
+    // Set new access token in the cookie
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV == "production",
+      sameSite: process.env.NODE_ENV == "production" ? "none" : "",
+      maxAge: 15 * 60 * 1000, //15m
+    });
+
+    return successResponse(res, 200, "Session return", user);
+    // res.json({ message: "Access token refreshed." });
+  } catch (err) {
+    let appErr = new AppError("Invalid refresh token", 403);
+    logMessage(errorLogger, "Failed to refresh token", err);
+    next(appErr);
+  }
+};
 const login = async (req, res, next) => {
   const { email, password } = req.body;
   // check the mail its match with any
@@ -34,28 +71,28 @@ const login = async (req, res, next) => {
     delete resUser?.password;
     // assign cookie
     const accessToken = generateAccessToken(resUser?._id);
-    // const refreshToken = generateRefreshToken(resUser?._id);
+    const refreshToken = generateRefreshToken(resUser?._id);
     // save refreshtoken in database
-    // let savedToken = new tokenModel({
-    //   token: refreshToken,
-    //   userId: resUser?._id,
-    //   expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    // });
-    // await savedToken.save();
+    let savedToken = new tokenModel({
+      token: refreshToken,
+      userId: resUser?._id,
+      expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), //7day
+    });
+    await savedToken.save();
 
     // setcookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV == "production",
       sameSite: process.env.NODE_ENV == "production" ? "none" : "",
-      // maxAge: 15 * 60 * 1000,
+      maxAge: 15 * 60 * 1000, //15m
     });
-    // res.cookie("refreshToken", refreshToken, {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV == "production",
-    //   sameSite: process.env.NODE_ENV == "production" ? "none" : "",
-    //   maxAge: 7 * 24 * 60 * 60 * 1000,
-    // });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV == "production",
+      sameSite: process.env.NODE_ENV == "production" ? "none" : "",
+      maxAge: 7 * 24 * 60 * 60 * 1000, //7day
+    });
     return successResponse(res, 200, "Login Successfull", resUser);
     // res.status(200).json({ msg: "Login Successfull", data: resUser });
   } catch (err) {
@@ -101,6 +138,17 @@ const refreshToken = async (req, res, next) => {
 };
 const logout = async (req, res, next) => {
   try {
+    let { userId } = req.userId;
+    let token = await tokenModel.deleteMany({ userId });
+    if (!token) {
+      return errorResponse(res, 500, "Failed to logout");
+    }
+    res.clearCookie("accessToken", {
+      path: "/", // Path of the cookie
+      httpOnly: true,
+      secure: process.env.NODE_ENV == "production",
+      sameSite: process.env.NODE_ENV == "production" ? "none" : "",
+    });
     res.clearCookie("accessToken", {
       path: "/", // Path of the cookie
       httpOnly: true,
@@ -114,4 +162,4 @@ const logout = async (req, res, next) => {
   }
 };
 
-export { login, refreshToken, logout };
+export { verifySession, login, refreshToken, logout };
