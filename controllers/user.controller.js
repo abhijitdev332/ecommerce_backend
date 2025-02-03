@@ -1,4 +1,4 @@
-import { userModel } from "../models/models.js";
+import { cartModel, userModel } from "../models/models.js";
 import { AppError, DatabaseError } from "../lib/customError.js";
 import { encrypt } from "../lib/encryptPass.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
@@ -36,8 +36,14 @@ async function createUser(req, res, next) {
     let userErr = new DatabaseError("Failed to create user!!");
     return next(userErr);
   }
+  // create new cart
 
   let resUser = { ...savedUser._doc };
+  let newCart = new cartModel({ userId: resUser?._id });
+  if (!newCart) {
+    await userModel.deleteOne({ _id: resUser?._id });
+    return errorResponse(400, "failed to create user!!");
+  }
   // send sms to user
   delete resUser?.password;
   return successResponse(res, 201, "User Created Successfully", resUser);
