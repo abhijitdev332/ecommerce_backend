@@ -21,8 +21,13 @@ async function getCart(req, res, next) {
   const { id } = req.params;
   const matchedCart = await cartModel.findOne({ userId: id });
   if (!matchedCart) {
-    let userErr = new AppError("can't find any user", 400);
-    return next(userErr);
+    const newCart = new cartModel({
+      userId: id,
+    });
+    let savedCart = await newCart.save();
+    return successResponse(res, 201, "Cart created successfully");
+    // let userErr = new AppError("can't find any user", 400);
+    // return next(userErr);
   }
 
   return successResponse(res, 200, "sucessfull", matchedCart);
@@ -91,7 +96,7 @@ async function removeProductInCart(req, res, next) {
   if (!cart) {
     return infoResponse(res, 400, "can't find the cart");
   }
-  let inx = cart.products.find(
+  let inx = cart.products.findIndex(
     (ele) => ele?.productId == productId && ele?.variantId == variantId
   );
 

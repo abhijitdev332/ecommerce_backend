@@ -138,8 +138,8 @@ const refreshToken = async (req, res, next) => {
 };
 const logout = async (req, res, next) => {
   try {
-    let { userId } = req.userId;
-    let token = await tokenModel.deleteMany({ userId });
+    let { userId } = req.user;
+    let token = await tokenModel.deleteMany({ userId: userId });
     if (!token) {
       return errorResponse(res, 500, "Failed to logout");
     }
@@ -149,7 +149,7 @@ const logout = async (req, res, next) => {
       secure: process.env.NODE_ENV == "production",
       sameSite: process.env.NODE_ENV == "production" ? "none" : "",
     });
-    res.clearCookie("accessToken", {
+    res.clearCookie("refreshToken", {
       path: "/", // Path of the cookie
       httpOnly: true,
       secure: process.env.NODE_ENV == "production",

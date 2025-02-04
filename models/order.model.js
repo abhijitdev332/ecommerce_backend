@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+
 const orderSchema = new mongoose.Schema(
   {
     userId: {
@@ -11,6 +12,9 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "address",
       required: true,
+    },
+    addressLine: {
+      type: String,
     },
     products: [
       {
@@ -56,6 +60,37 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+orderSchema.pre("save", async function (next) {
+  if (!this.addressLine && this.address) {
+    try {
+      const Address = mongoose.model("address");
+      const addressDoc = await Address.findById(this.address).lean();
+
+      if (addressDoc) {
+        const { houseNo, landMark, city, district, state, country, pin } =
+          addressDoc;
+
+        // Construct address line dynamically
+        const formattedAddress = [
+          houseNo,
+          landMark,
+          city,
+          district,
+          state,
+          country?.toUpperCase(), // Convert country to uppercase for consistency
+          pin,
+        ]
+          .filter(Boolean) // Remove any undefined or empty fields
+          .join(", ");
+
+        this.addressLine = formattedAddress;
+      }
+    } catch (err) {
+      return next(err);
+    }
+  }
+  next();
+});
 
 const orderModel = mongoose.model("order", orderSchema);
 export default orderModel;

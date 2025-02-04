@@ -8,10 +8,12 @@ import {
 } from "../controllers/category.controller.js";
 import asyncWrapper from "../utils/asyncWrapper.js";
 import { uploader } from "../middleware/uploadImage.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 const router = express.Router();
 
 router.post(
   "/create",
+  verifyToken,
   uploader.single("image"),
   asyncWrapper(createProductCata)
 );
@@ -21,9 +23,10 @@ router.get("/", asyncWrapper(getAllCategory));
 router.get("/:id", asyncWrapper(getProductCata));
 router.put(
   "/update/:id",
+  verifyToken,
   uploader.single("image"),
   asyncWrapper(updateProductCata)
 );
-router.delete("/remove/:id", asyncWrapper(deleteProductCata));
+router.delete("/remove/:id", verifyToken, asyncWrapper(deleteProductCata));
 
 export default router;

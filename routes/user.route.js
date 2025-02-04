@@ -15,9 +15,19 @@ import {
 import { uploader } from "../middleware/uploadImage.js";
 
 router.post("/create", uploader.single("image"), asyncWrapper(createUser));
-router.post("/upload-image", uploader.single("image"), asyncWrapper());
-router.get("/:id", asyncWrapper(getUser));
-router.put("/:id", uploader.single("image"), asyncWrapper(updateUser));
-router.delete("/:id", asyncWrapper(deleteUser));
+router.post(
+  "/upload-image",
+  verifyToken,
+  uploader.single("image"),
+  asyncWrapper()
+);
+router.get("/:id", verifyToken, asyncWrapper(getUser));
+router.put(
+  "/:id",
+  verifyToken,
+  uploader.single("image"),
+  asyncWrapper(updateUser)
+);
+router.delete("/:id", verifyToken, asyncWrapper(deleteUser));
 
 export default router;

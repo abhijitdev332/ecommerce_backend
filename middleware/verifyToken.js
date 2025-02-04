@@ -10,7 +10,7 @@ export const verifyToken = (req, res, next) => {
       let authErr = new UnauthError("Token is invalid or expired", 401);
       return next(authErr);
     } else {
-      req.userId = data;
+      req.user = data;
       return next();
     }
   } else {

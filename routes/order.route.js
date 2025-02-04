@@ -8,11 +8,12 @@ import {
   getUserOrders,
   updateOrder,
 } from "../controllers/order.controller.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 
-router.post("/new", asyncWrapper(createOrder));
-router.get("/user/:id", asyncWrapper(getUserOrders));
-router.get("/:id", asyncWrapper(getOrder));
-router.put("/update/:id", asyncWrapper(updateOrder));
-router.delete("/remove/:id", asyncWrapper(deleteOrder));
+router.post("/new", verifyToken, asyncWrapper(createOrder));
+router.get("/user/:id", verifyToken, asyncWrapper(getUserOrders));
+router.get("/:id", verifyToken, asyncWrapper(getOrder));
+router.put("/update/:id", verifyToken, asyncWrapper(updateOrder));
+router.delete("/remove/:id", verifyToken, asyncWrapper(deleteOrder));
 
 export default router;

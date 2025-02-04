@@ -29,6 +29,7 @@ const cartSchema = new mongoose.Schema(
           imgurl: String,
           color: String,
           size: String,
+          stock: Number,
         },
       ],
       default: [],
