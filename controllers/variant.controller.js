@@ -6,6 +6,7 @@ import {
   successResponse,
 } from "../utils/apiResponse.js";
 import { uploadToCloudinary } from "../middleware/uploadImage.js";
+import mongoose from "mongoose";
 async function createVariant(req, res, next) {
   const { productId, sku, color, size } = req.body;
   // const hadVariant = await variantModel.find({ productId, color, size, sku });
@@ -38,28 +39,39 @@ async function getVariant(req, res, next) {
   return successResponse(res, 200, "sucessfull", matchedVa);
 }
 async function updateVariant(req, res, next) {
-  const { id } = req.params;
-  const { username, email, password } = req.body;
+  const { variants = [] } = req.body;
 
-  const updatedVa = await variantModel.findByIdAndUpdate(
-    id,
-    { ...req.body },
-    {
-      runValidators: true,
+  const bulkOperations = variants.map((variant) => {
+    const filter = {};
+
+    // Match either variantId or skuId
+    if (variant._id) {
+      filter._id = new mongoose.Schema.Types.ObjectId(variant._id);
     }
-  );
-  if (!updatedVa) {
-    let serverErr = new DatabaseError("Failed to update user!!");
-    return next(serverErr);
-  }
+    if (variant.sku) {
+      filter.sku = variant.sku;
+    }
 
-  return successResponse(res, 200, "Product Variant updated successfully");
+    return {
+      updateOne: {
+        filter, // Match condition
+        update: { $set: variant.data }, // Update fields
+      },
+    };
+  });
+
+  const result = await variantModel.bulkWrite(bulkOperations);
+
+  if (!result) {
+    return errorResponse(res, 400, "Failed to update variants");
+  }
+  return successResponse(res, 200, "variant update successfull");
 }
 async function deleteVariant(req, res, next) {
   const { id } = req.params;
   const deletedVa = await variantModel.findByIdAndDelete(id);
   if (!deletedVa) {
-    let serverErr = new DatabaseError("failed to delete user!!");
+    let serverErr = new DatabaseError("failed to delete variant!!");
     return next(serverErr);
   }
   return successResponse(res, 200, "product variant Deleted");
@@ -204,6 +216,50 @@ async function getProductsByColor(req, res, next) {
   return successResponse(res, 200, "successfull", result);
 }
 
+async function updateMany(req, res, next) {
+  const { variants = [] } = req.body;
+
+  if (!Array.isArray(variants) || !variants.length) {
+    return errorResponse(res, 400, "Invalid or empty variants array");
+  }
+
+  const bulkOperations = variants.reduce((ops, variant) => {
+    // Construct filter with robust validation
+    const filter = variant._id
+      ? { _id: new mongoose.Types.ObjectId(variant._id) }
+      : variant.sku
+      ? { sku: variant.sku }
+      : null;
+
+    if (filter && variant.data) {
+      ops.push({
+        updateOne: {
+          filter,
+          update: { $set: variant.data },
+          // upsert: true,  Optional: create document if not exists
+        },
+      });
+    }
+
+    return ops;
+  }, []);
+
+  // Throw if no valid operations
+  if (!bulkOperations.length) {
+    return errorResponse(res, 400, "No valid updates to process");
+  }
+
+  let result = await variantModel.bulkWrite(bulkOperations, {
+    ordered: false, // Continue on error
+    writeConcern: { w: 1 },
+  });
+
+  if (!result) {
+    return errorResponse(res, 400, "Failed to update variants");
+  }
+  return successResponse(res, 200, "variant update successfull", result);
+}
+
 export {
   createVariant,
   getVariant,
@@ -212,4 +268,5 @@ export {
   createMany,
   imageUpload,
   getProductsByColor,
+  updateMany,
 };

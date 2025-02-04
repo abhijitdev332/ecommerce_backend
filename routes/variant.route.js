@@ -7,6 +7,7 @@ import {
   createMany,
   imageUpload,
   getProductsByColor,
+  updateMany,
 } from "../controllers/variant.controller.js";
 import asyncWrapper from "../utils/asyncWrapper.js";
 import { uploader } from "../middleware/uploadImage.js";
@@ -22,6 +23,7 @@ router.post(
 router.post("/insert", adminPermit, asyncWrapper(createMany));
 router.get("/q", asyncWrapper(getProductsByColor));
 router.get("/:id", asyncWrapper(getVariant));
+router.put("/update/many", asyncWrapper(updateMany));
 router.put("/update/:id", adminPermit, asyncWrapper(updateVariant));
 router.delete("/remove/:id", adminPermit, asyncWrapper(deleteVariant));
 

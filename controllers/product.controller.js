@@ -105,7 +105,9 @@ async function getProduct(req, res, next) {
 
   const matchedProduct = await productModel
     .findOne({ _id: id })
-    .populate("reviews.user", { username: 1 });
+    .populate("reviews.user", { username: 1 })
+    .populate("category")
+    .populate("subCategory");
   const productVariants = await variantModel.find({
     productId: matchedProduct?._id,
   });
@@ -122,11 +124,11 @@ async function getProduct(req, res, next) {
 }
 async function updateProduct(req, res, next) {
   const { id } = req.params;
-  const { username, email, password } = req.body;
-
+  const { name, description, brand, genderFor, returnPolicy, productDetails } =
+    req.body;
   const updatedUser = await productModel.findByIdAndUpdate(
     id,
-    { ...req.body },
+    { name, description, brand, genderFor, returnPolicy, productDetails },
     {
       runValidators: true,
     }

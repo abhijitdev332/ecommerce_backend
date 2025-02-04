@@ -11,9 +11,9 @@ const VariantSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    color: { type: String, index: true },
-    size: { type: String },
-    basePrice: { type: Number },
+    color: { type: String, required: true, index: true },
+    size: { type: String, required: true },
+    basePrice: { type: Number, default: 0 },
     sellPrice: { type: Number, required: true },
     stock: { type: Number, default: 0 },
     sold: {
@@ -22,6 +22,7 @@ const VariantSchema = new mongoose.Schema(
     },
     discount: {
       type: String,
+      default: "0",
     },
     images: [
       {
