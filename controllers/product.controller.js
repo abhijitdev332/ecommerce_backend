@@ -444,11 +444,10 @@ const getProductByGender = async (req, res, next) => {
   return errorResponse(res, 400, "failed to get by for this category");
 };
 async function getProductsByCategory(req, res, next) {
-  const { query = "casual", limit = 5, skip = 0 } = req.query;
-  const productsByCategory = await productModel.aggregate([
+  const { query = "casual", limit = 0, skip = 0 } = req.query;
+  const pipeline = [
     { $sort: { createdAt: -1 } },
     { $skip: +skip },
-    { $limit: +limit },
 
     // Step 1: Lookup to join categories
     {
@@ -509,8 +508,11 @@ async function getProductsByCategory(req, res, next) {
         "firstVariant.discount": 1, // First variant discount
       },
     },
-  ]);
-
+  ];
+  if (+limit > 0) {
+    pipeline.push({ $limit: +limit });
+  }
+  const productsByCategory = await productModel.aggregate(pipeline);
   if (!productsByCategory) {
     return errorResponse(res, 400, "can't find products by this category");
   }

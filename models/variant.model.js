@@ -41,7 +41,6 @@ VariantSchema.statics.calculateDiscount = function (basePrice, sellPrice) {
   const discount = ((basePrice - sellPrice) / basePrice) * 100;
   return `${discount.toFixed(0)}`;
 };
-
 // Pre-save hook to automatically calculate discount
 VariantSchema.pre("save", function (next) {
   this.discount = VariantSchema.statics.calculateDiscount(
@@ -50,7 +49,6 @@ VariantSchema.pre("save", function (next) {
   );
   next();
 });
-
 // For bulk operations
 VariantSchema.pre("updateOne", function (next) {
   const update = this.getUpdate();
@@ -64,7 +62,6 @@ VariantSchema.pre("updateOne", function (next) {
   }
   next();
 });
-
 // For updateMany operations
 VariantSchema.pre("updateMany", function (next) {
   const update = this.getUpdate();
