@@ -7,6 +7,7 @@ import {
   deleteProduct,
   deleteReview,
   getAllProducts,
+  getAllProductWithFillters,
   getProduct,
   getProductByGender,
   getProductOrderDetails,
@@ -23,7 +24,7 @@ import { verifyToken } from "../middleware/verifyToken.js";
 router.post("/create", adminPermit, asyncWrapper(createProduct));
 router.get("/top", asyncWrapper(getTopSellingProducts));
 router.get("/arival", asyncWrapper(newArrivalsProducts));
-router.get("/shop", asyncWrapper(getAllProducts));
+router.get("/shop", asyncWrapper(getAllProductWithFillters));
 router.get("/relative/:id", asyncWrapper(getRelatedProducts));
 router.get("/category", asyncWrapper(getProductsByCategory));
 router.get("/subCategory", asyncWrapper(getProductsBySubCategory));

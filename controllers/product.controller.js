@@ -1,4 +1,10 @@
-import { orderModel, productModel, variantModel } from "../models/models.js";
+import {
+  subCategoryModel,
+  orderModel,
+  productCate,
+  productModel,
+  variantModel,
+} from "../models/models.js";
 import { AppError, DatabaseError, ServerError } from "../lib/customError.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
@@ -18,7 +24,7 @@ async function createProduct(req, res, next) {
   );
 }
 async function getAllProducts(req, res, next) {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 5, skip = 0, category, subcategory, color, size } = req.query;
   // Step 1: Get the total count of products
   const totalCount = await productModel.countDocuments();
 
@@ -196,7 +202,7 @@ async function deleteReview(req, res, next) {
 const getTopSellingProducts = async (req, res, next) => {
   const { limit = 4, skip = 0 } = req.query;
   try {
-    const result = await orderModel.aggregate([
+    const pipeline = [
       // Step 1: Unwind the items array to process each variant in orders
       { $unwind: "$products" },
 
@@ -261,8 +267,6 @@ const getTopSellingProducts = async (req, res, next) => {
       { $sort: { totalProductSales: -1 } },
 
       // Step 7: Limit results to the top-selling products
-      { $limit: +limit },
-      { $skip: +skip },
       // {
       //   $addFields: {
       //     firstVariantImages: { $arrayElemAt: ["$variantDetails.images", 0] }, // Get the first variant images
@@ -293,23 +297,29 @@ const getTopSellingProducts = async (req, res, next) => {
           // variants: 1, // List of all variants
         },
       },
-    ]);
+    ];
+    const countPipeline = [...pipeline, { $count: "totalCount" }];
+    const countResult = await productModel.aggregate(countPipeline);
+    const totalCount = countResult.length > 0 ? countResult[0].totalCount : 0;
+    if (+skip > 0) pipeline.push({ $skip: +skip });
+    if (+limit > 0) pipeline.push({ $limit: +limit });
+    const result = await orderModel.aggregate(pipeline);
 
-    return successResponse(res, 200, "Sucessfull", result);
+    return successResponse(res, 200, "Sucessfull", {
+      products: result,
+      totalLength: totalCount,
+    });
   } catch (error) {
     next(new ServerError("Failed to get top selling products"));
   }
 };
 const newArrivalsProducts = async (req, res, next) => {
   const { limit = 4, skip = 0 } = req.query;
-  const newArrivals = await productModel.aggregate([
+  const pipeline = [
     // Step 1: Sort products by createdAt in descending order
     { $sort: { createdAt: -1 } },
 
     // Step 2: Limit the number of results
-    { $limit: +limit },
-    { $skip: +skip },
-
     // Step 3: Lookup to get variants for each product
     {
       $lookup: {
@@ -359,17 +369,26 @@ const newArrivalsProducts = async (req, res, next) => {
         firstVariantBasePrice: 1,
       },
     },
-  ]);
+  ];
+  const countPipeline = [...pipeline, { $count: "totalCount" }];
+  const countResult = await productModel.aggregate(countPipeline);
+  const totalCount = countResult.length > 0 ? countResult[0].totalCount : 0;
+  if (+skip > 0) pipeline.push({ $skip: +skip });
+  if (+limit > 0) pipeline.push({ $limit: +limit });
+  const newArrivals = await productModel.aggregate(pipeline);
 
   if (!newArrivals) {
     return next(new ServerError("Failed to get new arival products"));
   }
-  return successResponse(res, 200, "Successfull", newArrivals);
+  return successResponse(res, 200, "Successfull", {
+    products: newArrivals,
+    totalLength: totalCount,
+  });
 };
 const getProductByGender = async (req, res, next) => {
   const { gender = "male", limit = 10, skip = 0 } = req.query;
 
-  const genderProducts = await productModel.aggregate([
+  const pipeline = [
     // Step 1: Filter by gender
     {
       $match: {
@@ -379,11 +398,6 @@ const getProductByGender = async (req, res, next) => {
 
     // Step 2: Sort by createdAt (latest products first)
     { $sort: { createdAt: -1 } },
-
-    // Step 3: Pagination (skip and limit)
-    { $skip: +skip },
-    { $limit: +limit },
-
     // Step 4: Lookup to get variants for each product
     {
       $lookup: {
@@ -435,20 +449,27 @@ const getProductByGender = async (req, res, next) => {
         firstVariantDiscount: 1,
       },
     },
-  ]);
+  ];
+  const countPipeline = [...pipeline, { $count: "totalCount" }];
+  const countResult = await productModel.aggregate(countPipeline);
+  const totalCount = countResult.length > 0 ? countResult[0].totalCount : 0;
+  if (+skip > 0) pipeline.push({ $skip: +skip });
+  if (+limit > 0) pipeline.push({ $limit: +limit });
 
-  if (genderProducts?.length > 0) {
-    return successResponse(res, 200, "successfull", genderProducts);
+  const genderProducts = await productModel.aggregate(pipeline);
+
+  if (!genderProducts) {
+    return errorResponse(res, 400, "failed to get by for this category");
   }
-
-  return errorResponse(res, 400, "failed to get by for this category");
+  return successResponse(res, 200, "successfull", {
+    products: genderProducts,
+    totalLength: totalCount,
+  });
 };
 async function getProductsByCategory(req, res, next) {
   const { query = "casual", limit = 0, skip = 0 } = req.query;
   const pipeline = [
     { $sort: { createdAt: -1 } },
-    { $skip: +skip },
-
     // Step 1: Lookup to join categories
     {
       $lookup: {
@@ -509,23 +530,28 @@ async function getProductsByCategory(req, res, next) {
       },
     },
   ];
-  if (+limit > 0) {
-    pipeline.push({ $limit: +limit });
-  }
+  const countPipeline = [...pipeline, { $count: "totalCount" }];
+  const countResult = await productModel.aggregate(countPipeline);
+  const totalCount = countResult.length > 0 ? countResult[0].totalCount : 0;
+
+  // Second query: Fetch paginated products
+  if (+skip > 0) pipeline.push({ $skip: +skip });
+  if (+limit > 0) pipeline.push({ $limit: +limit });
   const productsByCategory = await productModel.aggregate(pipeline);
   if (!productsByCategory) {
     return errorResponse(res, 400, "can't find products by this category");
   }
 
-  return successResponse(res, 200, "successfull", productsByCategory);
+  return successResponse(res, 200, "successfull", {
+    products: productsByCategory,
+    totalLength: totalCount,
+  });
 }
 async function getProductsBySubCategory(req, res, next) {
   const { query = "shirt", limit = 5, skip = 0 } = req.query;
 
-  const productsByCategory = await productModel.aggregate([
+  const pipeline = [
     { $sort: { createdAt: -1 } },
-    { $skip: +skip },
-    { $limit: +limit },
     // Step 1: Lookup to join categories
     {
       $lookup: {
@@ -584,15 +610,25 @@ async function getProductsBySubCategory(req, res, next) {
         "firstVariant.discount": 1, // First variant discount
       },
     },
-  ]);
+  ];
+  const countPipeline = [...pipeline, { $count: "totalCount" }];
+  const countResult = await productModel.aggregate(countPipeline);
+  const totalCount = countResult.length > 0 ? countResult[0].totalCount : 0;
 
+  // Second query: Fetch paginated products
+  if (+skip > 0) pipeline.push({ $skip: +skip });
+  if (+limit > 0) pipeline.push({ $limit: +limit });
+
+  let productsByCategory = await productModel.aggregate(pipeline);
   if (!productsByCategory) {
     return errorResponse(res, 400, "can't find products by this category");
   }
 
-  return successResponse(res, 200, "successfull", productsByCategory);
+  return successResponse(res, 200, "successfull", {
+    products: productsByCategory,
+    totalLength: totalCount,
+  });
 }
-
 async function getProductOrderDetails(req, res, next) {
   let { productId = "", color = "" } = req.query;
 
@@ -726,7 +762,6 @@ async function getProductOrderDetails(req, res, next) {
 
   return successResponse(res, 200, "Successful", productOrders);
 }
-
 const getRelatedProducts = async (req, res, next) => {
   const { id } = req.params;
   const { limit = 5, skip = 0 } = req.query;
@@ -803,6 +838,181 @@ const getRelatedProducts = async (req, res, next) => {
   }
   return successResponse(res, 200, "successfull", relativeProducts);
 };
+const getAllProductWithFillters = async (req, res, next) => {
+  try {
+    const {
+      limit = 5,
+      skip = 0,
+      category,
+      subcategory,
+      color,
+      size,
+    } = req.query;
+
+    // Get category and subcategory IDs if names are provided
+    let categoryId;
+    let subcategoryId;
+
+    if (category) {
+      const categoryDoc = await productCate.findOne({ categoryName: category });
+      if (categoryDoc) {
+        categoryId = categoryDoc._id;
+      }
+    }
+
+    if (subcategory) {
+      const subcategoryDoc = await subCategoryModel.findOne({
+        SubCategoryName: subcategory,
+      });
+      if (subcategoryDoc) {
+        subcategoryId = subcategoryDoc._id;
+      }
+    }
+
+    // Build initial match conditions
+    const matchConditions = {};
+    if (categoryId) {
+      matchConditions.category = categoryId;
+    }
+    if (subcategoryId) {
+      matchConditions.subcategory = subcategoryId;
+    }
+
+    // Create base pipeline for both count and data
+    const basePipeline = [
+      // Initial match for category/subcategory
+      ...(Object.keys(matchConditions).length > 0
+        ? [{ $match: matchConditions }]
+        : []),
+
+      // Lookup variants
+      {
+        $lookup: {
+          from: "variants",
+          localField: "_id",
+          foreignField: "productId",
+          as: "variants",
+        },
+      },
+
+      // Match variants with color/size if provided
+      ...(color || size
+        ? [
+            {
+              $match: {
+                variants: {
+                  $elemMatch: {
+                    ...(color && { color: color }),
+                    ...(size && { size: size }),
+                  },
+                },
+              },
+            },
+          ]
+        : []),
+    ];
+
+    // Get total count using the base pipeline
+    const countPipeline = [...basePipeline, { $count: "total" }];
+
+    const totalCountResult = await productModel.aggregate(countPipeline);
+    const totalCount = totalCountResult[0]?.total || 0;
+
+    // Complete pipeline for products
+    const productsWithStats = await productModel.aggregate([
+      ...basePipeline,
+
+      // Sort by createdAt
+      { $sort: { createdAt: -1 } },
+
+      // Lookup categories
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "categoryDetails",
+        },
+      },
+
+      // Lookup subcategories
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subcategory",
+          foreignField: "_id",
+          as: "subcategoryDetails",
+        },
+      },
+
+      // Add calculated fields
+      {
+        $addFields: {
+          totalStock: { $sum: "$variants.stock" },
+          firstVariantImages: {
+            $arrayElemAt: ["$variants.images", 0],
+          },
+          firstVariantSellPrice: {
+            $arrayElemAt: ["$variants.sellPrice", 0],
+          },
+          firstVariantBasePrice: {
+            $arrayElemAt: ["$variants.basePrice", 0],
+          },
+          firstVariantDiscount: {
+            $arrayElemAt: ["$variants.discount", 0],
+          },
+          totalVariants: { $size: "$variants" },
+          categoryInfo: { $arrayElemAt: ["$categoryDetails", 0] },
+          subcategoryInfo: { $arrayElemAt: ["$subcategoryDetails", 0] },
+        },
+      },
+
+      // Pagination
+      { $skip: +skip },
+      { $limit: +limit },
+
+      // Final projection
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          sku: 1,
+          description: 1,
+          createdAt: 1,
+          averageRating: 1,
+          category: {
+            _id: "$categoryInfo._id",
+            categoryName: "$categoryInfo.categoryName",
+            categoryImage: "$categoryInfo.categoryImage",
+          },
+          subcategory: {
+            _id: "$subcategoryInfo._id",
+            SubCategoryName: "$subcategoryInfo.SubCategoryName", // Changed to match your schema
+            categoryImage: "$subcategoryInfo.categoryImage",
+          },
+          totalStock: 1,
+          totalVariants: 1,
+          firstVariantImages: 1,
+          firstVariantSellPrice: 1,
+          firstVariantBasePrice: 1,
+          firstVariantDiscount: 1,
+        },
+      },
+    ]);
+
+    if (!productsWithStats) {
+      return errorResponse(res, 400, "Failed to get all Products");
+    }
+
+    return successResponse(res, 200, "Fetched all products", {
+      products: productsWithStats,
+      totalLength: totalCount,
+    });
+  } catch (error) {
+    console.error("Error in getAllProductWithFillters:", error);
+    return errorResponse(res, 500, "Internal server error");
+  }
+};
 
 export {
   createProduct,
@@ -819,4 +1029,5 @@ export {
   getProductOrderDetails,
   getAllProducts,
   getRelatedProducts,
+  getAllProductWithFillters,
 };
