@@ -222,6 +222,7 @@ async function updateMany(req, res, next) {
   if (!Array.isArray(variants) || !variants.length) {
     return errorResponse(res, 400, "Invalid or empty variants array");
   }
+  //
 
   const bulkOperations = variants.reduce((ops, variant) => {
     // Construct filter with robust validation
@@ -235,7 +236,7 @@ async function updateMany(req, res, next) {
       ops.push({
         updateOne: {
           filter,
-          update: { $set: variant.data },
+          update: { $set: { ...variant.data } },
           // upsert: true,  Optional: create document if not exists
         },
       });
