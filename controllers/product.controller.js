@@ -1014,6 +1014,116 @@ const getAllProductWithFillters = async (req, res, next) => {
   }
 };
 
+const getItemsByQuery = async (req, res, next) => {
+  const { query = "" } = req.query;
+  const searchKeywords = query.trim().split(/\s+/);
+  const pipeline = [
+    { $sort: { createdAt: -1 } },
+
+    // Step 2: Lookup to join categories
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "categoryInfo",
+      },
+    },
+
+    // Step 3: Lookup to join subcategories
+    {
+      $lookup: {
+        from: "subcategories",
+        localField: "subCategory",
+        foreignField: "_id",
+        as: "subcategoryInfo",
+      },
+    },
+
+    // Step 4: Lookup to join variants
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "productId",
+        as: "variants",
+      },
+    },
+
+    // Step 5: Match search query
+    {
+      $match: {
+        $or: searchKeywords.map((word) => ({
+          $or: [
+            { "categoryInfo.categoryName": { $regex: word, $options: "i" } }, // Category match
+            {
+              "subcategoryInfo.SubCategoryName": {
+                $regex: word,
+                $options: "i",
+              },
+            }, // Subcategory match
+            { "variants.color": { $regex: word, $options: "i" } }, // Color match
+            { "variants.size": { $regex: word, $options: "i" } }, // Size match
+            { name: { $regex: word, $options: "i" } }, // Product name match
+          ],
+        })),
+      },
+    },
+
+    // Step 6: Add fields for total variants and first variant details
+    {
+      $addFields: {
+        totalStock: { $sum: "$variants.stock" },
+        totalVariants: { $size: "$variants" },
+        firstVariant: { $arrayElemAt: ["$variants", 0] },
+        firstVariantImages: { $arrayElemAt: ["$variants.images", 0] },
+        firstVariantSellPrice: { $arrayElemAt: ["$variants.sellPrice", 0] },
+        firstVariantDiscount: { $arrayElemAt: ["$variants.discount", 0] },
+      },
+    },
+
+    // Step 7: Project fields to include only relevant data
+    {
+      $project: {
+        name: 1,
+        sku: 1,
+        imgurl: 1,
+        description: 1,
+        averageRating: 1,
+        totalStock: 1,
+        createdAt: 1,
+        category: { $arrayElemAt: ["$categoryInfo.categoryName", 0] },
+        subcategory: { $arrayElemAt: ["$subcategoryInfo.SubCategoryName", 0] },
+        totalVariants: 1,
+        firstVariantImages: 1,
+        firstVariantSellPrice: 1,
+        firstVariantDiscount: 1,
+        "firstVariant.color": 1,
+        "firstVariant.size": 1,
+        "firstVariant.sellPrice": 1,
+        "firstVariant.stock": 1,
+        "firstVariant.images": 1,
+        "firstVariant.discount": 1,
+      },
+    },
+  ];
+
+  // Count matching documents before pagination
+  const countPipeline = [...pipeline, { $count: "totalCount" }];
+  const countResult = await productModel.aggregate(countPipeline);
+  const totalCount = countResult.length > 0 ? countResult[0].totalCount : 0;
+
+  const products = await productModel.aggregate(pipeline);
+  if (!products) {
+    return errorResponse(res, 400, "failed to get result");
+  }
+
+  return successResponse(res, 200, "Fetched products", {
+    products,
+    totalLength: totalCount,
+  });
+};
+
 export {
   createProduct,
   getProduct,
@@ -1030,4 +1140,5 @@ export {
   getAllProducts,
   getRelatedProducts,
   getAllProductWithFillters,
+  getItemsByQuery,
 };

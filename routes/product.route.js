@@ -8,6 +8,7 @@ import {
   deleteReview,
   getAllProducts,
   getAllProductWithFillters,
+  getItemsByQuery,
   getProduct,
   getProductByGender,
   getProductOrderDetails,
@@ -25,6 +26,7 @@ router.post("/create", adminPermit, asyncWrapper(createProduct));
 router.get("/top", asyncWrapper(getTopSellingProducts));
 router.get("/arival", asyncWrapper(newArrivalsProducts));
 router.get("/shop", asyncWrapper(getAllProductWithFillters));
+router.get("/query", asyncWrapper(getItemsByQuery));
 router.get("/relative/:id", asyncWrapper(getRelatedProducts));
 router.get("/category", asyncWrapper(getProductsByCategory));
 router.get("/subCategory", asyncWrapper(getProductsBySubCategory));

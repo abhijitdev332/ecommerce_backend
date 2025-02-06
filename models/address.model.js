@@ -34,6 +34,10 @@ const AddressSchema = new mongoose.Schema(
         message: "{VALUE} is not a valid country",
       },
     },
+    mobile: {
+      type: String,
+      required: true,
+    },
     pin: {
       type: String,
       required: true,
