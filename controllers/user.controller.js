@@ -106,6 +106,16 @@ async function updateUser(req, res, next) {
     data: updatedUser,
   });
 }
+async function updateUserRole(req, res, next) {
+  const { id } = req.params;
+  const { role } = req.body;
+
+  const updatedUser = await userModel.findByIdAndUpdate(id, { roles: [role] });
+  if (!updatedUser) {
+    return errorResponse(res, 400, "Failed to update user role");
+  }
+  return successResponse(res, 200, "Status Updated");
+}
 async function deleteUser(req, res, next) {
   const { id } = req.params;
   const deletedUser = await userModel.findByIdAndDelete(id);
@@ -118,4 +128,11 @@ async function deleteUser(req, res, next) {
   });
 }
 
-export { createUser, getUser, updateUser, deleteUser, uploadImage };
+export {
+  createUser,
+  getUser,
+  updateUser,
+  updateUserRole,
+  deleteUser,
+  uploadImage,
+};

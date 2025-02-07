@@ -628,7 +628,6 @@ const getTopCategories = async (req, res, next) => {
     topCategories
   );
 };
-
 // stats
 const getAdminStats = async (req, res, next) => {
   const today = new Date();
@@ -653,19 +652,10 @@ const getAdminStats = async (req, res, next) => {
           { $group: { _id: null, todayOrders: { $sum: 1 } } },
         ],
 
-        // 3️⃣ Total Customers & Today's Customers
-        totalCustomers: [
-          { $group: { _id: null, totalCustomers: { $sum: 1 } } },
-        ],
-        todayCustomers: [
-          { $match: { createdAt: { $gte: today } } },
-          { $group: { _id: null, todayCustomers: { $sum: 1 } } },
-        ],
-
-        // 4️⃣ Order Status Breakdown (All Time)
+        // 3️⃣ Order Status Breakdown (All Time)
         orderStatusArray: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
 
-        // 5️⃣ Order Status Breakdown (Today)
+        // 4️⃣ Order Status Breakdown (Today)
         todayOrderStatusArray: [
           { $match: { createdAt: { $gte: today } } },
           { $group: { _id: "$status", count: { $sum: 1 } } },
@@ -680,8 +670,6 @@ const getAdminStats = async (req, res, next) => {
         todaySaleAmount: { $arrayElemAt: ["$todaySaleAmount.todaySales", 0] },
         totalOrders: { $arrayElemAt: ["$totalOrders.totalOrders", 0] },
         todayOrders: { $arrayElemAt: ["$todayOrders.todayOrders", 0] },
-        totalCustomers: { $arrayElemAt: ["$totalCustomers.totalCustomers", 0] },
-        todayCustomers: { $arrayElemAt: ["$todayCustomers.todayCustomers", 0] },
 
         // Convert order status array to object using `$arrayToObject`
         orderStatus: {
@@ -707,8 +695,35 @@ const getAdminStats = async (req, res, next) => {
     },
   ]);
 
+  const userStats = await userModel.aggregate([
+    {
+      $facet: {
+        totalUsers: [{ $group: { _id: null, totalUsers: { $sum: 1 } } }],
+        todayUsers: [
+          { $match: { createdAt: { $gte: today } } },
+          { $group: { _id: null, todayUsers: { $sum: 1 } } },
+        ],
+      },
+    },
+    {
+      $project: {
+        totalUsers: { $arrayElemAt: ["$totalUsers.totalUsers", 0] },
+        todayUsers: { $arrayElemAt: ["$todayUsers.todayUsers", 0] },
+      },
+    },
+  ]);
+
+  // Merge the orderStats and userStats results
+  const finalStats = {
+    ...orderStats[0],
+    totalUsers: userStats[0]?.totalUsers || 0,
+    todayUsers: userStats[0]?.todayUsers || 0,
+  };
+  if (!finalStats) {
+    return errorResponse(res, 400, "Failed to get stats");
+  }
   // Send response
-  return successResponse(res, 200, "Fetched dashboard stats", orderStats[0]);
+  return successResponse(res, 200, "Fetched dashboard stats", finalStats);
 };
 const getAdminOrderStatus = async (req, res, next) => {
   const { range = "1m" } = req.query; // Accepts "7d", "1m", "1y"

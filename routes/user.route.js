@@ -4,6 +4,7 @@ const router = express.Router();
 // imports
 import asyncWrapper from "../utils/asyncWrapper.js";
 import { verifyToken } from "../middleware/verifyToken.js";
+import { adminPermit } from "../middleware/adminPermit.js";
 import { validateData } from "../middleware/schemaValidation.js";
 import { userCreationSchema, userUpdateSchema } from "../schemas/userSchema.js";
 import {
@@ -11,6 +12,7 @@ import {
   deleteUser,
   getUser,
   updateUser,
+  updateUserRole,
 } from "../controllers/user.controller.js";
 import { uploader } from "../middleware/uploadImage.js";
 
@@ -22,12 +24,14 @@ router.post(
   asyncWrapper()
 );
 router.get("/:id", verifyToken, asyncWrapper(getUser));
+router.put("/role/:id", adminPermit, asyncWrapper(updateUserRole));
 router.put(
   "/:id",
   verifyToken,
   uploader.single("image"),
   asyncWrapper(updateUser)
 );
+
 router.delete("/:id", verifyToken, asyncWrapper(deleteUser));
 
 export default router;
