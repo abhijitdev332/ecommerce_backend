@@ -78,19 +78,30 @@ async function getUser(req, res, next) {
 }
 async function updateUser(req, res, next) {
   const { id } = req.params;
-  const { username, email, password } = req.body;
+  const { username, email } = req.body;
 
   const fileBuffer = req?.file?.buffer; // File buffer from Multer
   const folder = "users"; // Cloudinary folder name
   let userImageUrl;
+  let updatedUser;
   if (fileBuffer) {
     userImageUrl = await uploadSingleToCloudinary(fileBuffer, folder);
+
+    updatedUser = await userModel
+      .findByIdAndUpdate(
+        id,
+        { username, email, imgUrl: userImageUrl?.url },
+        {
+          runValidators: true,
+        }
+      )
+      .select({ password: 0 });
   }
 
-  const updatedUser = await userModel
+  updatedUser = await userModel
     .findByIdAndUpdate(
       id,
-      { username, email, password, imgUrl: userImageUrl?.url || "" },
+      { username, email },
       {
         runValidators: true,
       }

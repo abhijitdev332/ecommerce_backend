@@ -81,8 +81,8 @@ const checkout = async (req, res) => {
         coupon: coupon.id,
       },
     ],
-    success_url: `${process.env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.APP_URL}/declined`,
+    success_url: `${process.env.APP_URL}/payment?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.APP_URL}/payment`,
     metadata: {
       address: addressId,
       userId: userId,
