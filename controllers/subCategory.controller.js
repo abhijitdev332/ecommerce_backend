@@ -33,7 +33,7 @@ async function createCategory(req, res, next) {
   return successResponse(res, 201, "Category Created Successfully", savedCata);
 }
 async function getAllSubCategory(req, res, next) {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   const subCategories = await subCategoryModel
     .find({})
     .sort({ createdAt: -1 })

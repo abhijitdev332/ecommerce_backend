@@ -31,7 +31,7 @@ async function createProductCata(req, res, next) {
   return successResponse(res, 201, "Category Created Successfully", savedCata);
 }
 async function getAllCategory(req, res, next) {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   const categories = await productCate
     .find({})
     .sort({ createdAt: -1 })
@@ -43,20 +43,6 @@ async function getAllCategory(req, res, next) {
   }
   return successResponse(res, 200, "Successfull", categories);
 }
-// async function getProductsOfCategory(req, res, next) {
-//   let { id } = req.params;
-
-//   let products=await productModel.aggregate([
-//     {$lookup:{
-//       category:new mongoose.Types.ObjectId(id)
-//     },
-//     {
-
-//     }
-
-//   }
-//   ])
-// }
 async function getProductCata(req, res, next) {
   const { id } = req.params;
 

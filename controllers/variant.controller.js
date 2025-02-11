@@ -215,7 +215,6 @@ async function getProductsByColor(req, res, next) {
 
   return successResponse(res, 200, "successfull", result);
 }
-
 async function updateMany(req, res, next) {
   const { variants = [] } = req.body;
 

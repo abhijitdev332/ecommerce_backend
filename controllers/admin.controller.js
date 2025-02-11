@@ -7,7 +7,7 @@ import {
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 const getAllProduct = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
 
   let totalProductsLen = await productModel.countDocuments();
   const allProducts = await productModel.aggregate([
@@ -169,7 +169,7 @@ const getProductWithVariants = async (req, res, next) => {
   );
 };
 const getAllUsers = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   const totalUsers = await userModel.countDocuments();
   const allUsers = await userModel
     .find({}, { password: 0 })
@@ -183,11 +183,9 @@ const getAllUsers = async (req, res, next) => {
   return successResponse(res, 200, "succeesfull", { allUsers, totalUsers });
 };
 const getAllCategories = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   const categoryStats = await productCate.aggregate([
     { $sort: { createdAt: -1 } },
-    { $limit: +limit },
-    { $skip: +skip },
 
     // Step 1: Lookup products linked to each category
     {
@@ -391,7 +389,7 @@ const getOrdersDetails = async (req, res, next) => {
   return successResponse(res, 200, "Succesfull", orderDetails);
 };
 const getAllOrders = async (req, res, next) => {
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   const totalOrderLength = await orderModel.countDocuments();
   const orders = await orderModel.aggregate([
     { $sort: { createdAt: -1 } },
@@ -735,35 +733,38 @@ const getAdminOrderStatus = async (req, res, next) => {
     if (range === "7d") {
       now.setDate(now.getDate() - 6); // Last 7 days (including today)
     } else if (range === "1m") {
-      now.setMonth(now.getMonth() - 1); // Last 1 month
+      now.setDate(now.getDate() - 29); // Last 30 days (including today)
     } else if (range === "1y") {
       now.setFullYear(now.getFullYear() - 1); // Last 1 year
+      now.setDate(1); // Start from the first day of the month
     }
     return now;
   };
-
   const startDate = getStartDate();
-
   const orderTrends = await orderModel.aggregate([
     {
       $match: {
-        createdAt: { $gte: startDate }, // Filter orders within selected range
+        createdAt: { $gte: startDate }, // Filter based on the selected range
       },
     },
     {
       $group: {
         _id: {
-          $dateToString: {
-            format: range === "1y" ? "%m-%Y" : "%d-%m-%Y", // Group by month for 1 year, otherwise by day
-            date: "$createdAt",
+          $cond: {
+            if: { $eq: [range, "1y"] },
+            then: { $dateToString: { format: "%m-%Y", date: "$createdAt" } }, // Month-Year for "1y"
+            else: { $dateToString: { format: "%d-%m-%Y", date: "$createdAt" } }, // Day-Month-Year for others
           },
         },
-        totalSales: { $sum: "$totalAmount" }, // Sum of sales
-        totalOrders: { $sum: 1 }, // Count orders
+        totalSales: { $sum: "$totalAmount" },
+        totalOrders: { $sum: 1 },
       },
     },
-    { $sort: { _id: 1 } }, // Sort by date
+    { $sort: { _id: -1 } }, // Sort descending (newest first)
   ]);
+  if (!orderTrends) {
+    return errorResponse(res, 400, "failed to get admin sale stats!!");
+  }
 
   return successResponse(res, 200, "Fetched order trends", orderTrends);
 };

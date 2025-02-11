@@ -84,7 +84,7 @@ async function getOrder(req, res, next) {
 }
 async function getUserOrders(req, res, next) {
   const { id } = req.params;
-  const { limit = 5, skip = 0 } = req.query;
+  const { limit = 0, skip = 0 } = req.query;
   let products = await orderModel
     .find({ userId: id })
     .sort({ createdAt: -1 })
