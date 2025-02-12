@@ -139,7 +139,7 @@ const refreshToken = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     let { userId } = req.user;
-    let token = await tokenModel.deleteMany({ userId: userId });
+    let token = await tokenModel.findOneAndDelete({ userId: userId });
     if (!token) {
       return errorResponse(res, 500, "Failed to logout");
     }

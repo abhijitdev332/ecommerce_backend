@@ -116,6 +116,19 @@ VariantSchema.pre("bulkWrite", async function (next, ops) {
     next(error);
   }
 });
+VariantSchema.pre("insertMany", async function (next, docs) {
+  try {
+    for (const doc of docs) {
+      doc.discount = VariantSchema.statics.calculateDiscount(
+        doc.basePrice,
+        doc.sellPrice
+      );
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 const productVariantModel = mongoose.model("variant", VariantSchema);
 
