@@ -470,6 +470,7 @@ const getAllOrders = async (req, res, next) => {
     {
       $addFields: {
         firstProduct: {
+          id: { $arrayElemAt: ["$products.productDetails._id", 0] },
           productName: { $arrayElemAt: ["$products.productDetails.name", 0] }, // First product name
           variantImages: {
             $arrayElemAt: ["$products.variantDetails.images", 0], // First variant images
